@@ -8,6 +8,7 @@ from pathlib import Path
 from .collector import collect_repositories
 from .db import connect
 from .github import GitHubClient, GitHubError
+from .snapshot import write_snapshot
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -28,6 +29,11 @@ def _parser() -> argparse.ArgumentParser:
     export = subparsers.add_parser("export", help="Export ranked opportunities as CSV")
     export.add_argument("--db", default="data/contrib-signals.sqlite")
     export.add_argument("--out", default="data/opportunities.csv")
+
+    snapshot = subparsers.add_parser("snapshot", help="Write a reproducible static dashboard snapshot")
+    snapshot.add_argument("--db", default="data/contrib-signals.sqlite")
+    snapshot.add_argument("--out", default="web/data/snapshot.json")
+    snapshot.add_argument("--csv", default="web/data/opportunities.csv")
     return parser
 
 
@@ -91,6 +97,12 @@ def main(argv: list[str] | None = None) -> int:
             _print_report(connection, args.limit)
         elif args.command == "export":
             _export(connection, args.out)
+        elif args.command == "snapshot":
+            snapshot = write_snapshot(connection, args.out, args.csv)
+            print(
+                f"Exported {len(snapshot['repositories'])} repositories and "
+                f"{len(snapshot['opportunities'])} opportunities to {args.out}"
+            )
         return 0
     except (GitHubError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

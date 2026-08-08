@@ -1,0 +1,338 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-08T17:38:12.138951+00:00",
+  "evidenceWindow": {
+    "oldestCollectedAt": "2026-08-08T14:26:40.270019+00:00",
+    "newestCollectedAt": "2026-08-08T14:29:39.352271+00:00"
+  },
+  "methodology": {
+    "repositoryScoreRange": [
+      -100,
+      100
+    ],
+    "opportunityScoreRange": [
+      0,
+      100
+    ],
+    "readyIssueThreshold": 70,
+    "ageAnchor": "repository collected_at",
+    "disclaimer": "A high score is evidence to investigate, not maintainer consent."
+  },
+  "repositories": [
+    {
+      "fullName": "astral-sh/ruff",
+      "htmlUrl": "https://github.com/astral-sh/ruff",
+      "description": "An extremely fast Python linter and code formatter, written in Rust.",
+      "language": "Rust",
+      "stars": 49106,
+      "forks": 2309,
+      "openIssuesCount": 2080,
+      "archived": false,
+      "pushedAt": "2026-08-08T14:18:26Z",
+      "license": "MIT",
+      "collectedAt": "2026-08-08T14:26:40.270019+00:00",
+      "score": 85,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 10,
+        "opportunities": 20,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 1,
+        "externalPrsMerged": 1,
+        "externalMergeRate": 1.0,
+        "hasContributing": true,
+        "hasCodeOfConduct": false,
+        "labeledIssues": 1,
+        "readyIssues": 1,
+        "bestIssueScore": 80
+      }
+    },
+    {
+      "fullName": "huggingface/transformers",
+      "htmlUrl": "https://github.com/huggingface/transformers",
+      "description": "\ud83e\udd17 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training. ",
+      "language": "Python",
+      "stars": 163471,
+      "forks": 34143,
+      "openIssuesCount": 2359,
+      "archived": false,
+      "pushedAt": "2026-08-08T13:00:35Z",
+      "license": "Apache-2.0",
+      "collectedAt": "2026-08-08T14:26:40.270019+00:00",
+      "score": 70,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 15,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 28,
+        "externalPrsMerged": 20,
+        "externalMergeRate": 0.7142857142857143,
+        "hasContributing": true,
+        "hasCodeOfConduct": true,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "n8n-io/n8n",
+      "htmlUrl": "https://github.com/n8n-io/n8n",
+      "description": "Fair-code workflow automation platform with native AI capabilities. Combine visual building with custom code, self-host or cloud, 400+ integrations.",
+      "language": "TypeScript",
+      "stars": 199814,
+      "forks": 60003,
+      "openIssuesCount": 1409,
+      "archived": false,
+      "pushedAt": "2026-08-08T13:59:04Z",
+      "license": "NOASSERTION",
+      "collectedAt": "2026-08-08T14:29:39.352271+00:00",
+      "score": 70,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 15,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 10,
+        "externalPrsMerged": 8,
+        "externalMergeRate": 0.8,
+        "hasContributing": true,
+        "hasCodeOfConduct": true,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "openai/openai-python",
+      "htmlUrl": "https://github.com/openai/openai-python",
+      "description": "The official Python library for the OpenAI API",
+      "language": "Python",
+      "stars": 31322,
+      "forks": 5115,
+      "openIssuesCount": 615,
+      "archived": false,
+      "pushedAt": "2026-08-07T02:54:37Z",
+      "license": "Apache-2.0",
+      "collectedAt": "2026-08-08T14:29:39.352271+00:00",
+      "score": 65,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 10,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 1,
+        "externalPrsSampled": 10,
+        "externalPrsMerged": 10,
+        "externalMergeRate": 1.0,
+        "hasContributing": true,
+        "hasCodeOfConduct": false,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "microsoft/markitdown",
+      "htmlUrl": "https://github.com/microsoft/markitdown",
+      "description": "Python tool for converting files and office documents to Markdown.",
+      "language": "Python",
+      "stars": 172345,
+      "forks": 12553,
+      "openIssuesCount": 844,
+      "archived": false,
+      "pushedAt": "2026-07-29T18:18:09Z",
+      "license": "MIT",
+      "collectedAt": "2026-08-08T14:29:39.352271+00:00",
+      "score": 60,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 5,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 9,
+        "externalPrsSampled": 6,
+        "externalPrsMerged": 6,
+        "externalMergeRate": 1.0,
+        "hasContributing": false,
+        "hasCodeOfConduct": true,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "fastapi/fastapi",
+      "htmlUrl": "https://github.com/fastapi/fastapi",
+      "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production",
+      "language": "Python",
+      "stars": 101410,
+      "forks": 9753,
+      "openIssuesCount": 75,
+      "archived": false,
+      "pushedAt": "2026-08-07T17:09:09Z",
+      "license": "MIT",
+      "collectedAt": "2026-08-08T14:26:40.270019+00:00",
+      "score": 55,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 0,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 11,
+        "externalPrsMerged": 7,
+        "externalMergeRate": 0.6363636363636364,
+        "hasContributing": false,
+        "hasCodeOfConduct": false,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "langchain-ai/langchain",
+      "htmlUrl": "https://github.com/langchain-ai/langchain",
+      "description": "The agent engineering platform.",
+      "language": "Python",
+      "stars": 143701,
+      "forks": 23941,
+      "openIssuesCount": 435,
+      "archived": false,
+      "pushedAt": "2026-08-08T10:53:48Z",
+      "license": "MIT",
+      "collectedAt": "2026-08-08T14:29:39.352271+00:00",
+      "score": 55,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 30,
+        "documentation": 0,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 10,
+        "externalPrsMerged": 10,
+        "externalMergeRate": 1.0,
+        "hasContributing": false,
+        "hasCodeOfConduct": false,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "vercel/ai",
+      "htmlUrl": "https://github.com/vercel/ai",
+      "description": "The AI Toolkit for TypeScript. From the creators of Next.js, the AI SDK is a free open-source library for building AI-powered applications and agents ",
+      "language": "TypeScript",
+      "stars": 26082,
+      "forks": 4921,
+      "openIssuesCount": 1752,
+      "archived": false,
+      "pushedAt": "2026-08-07T23:49:46Z",
+      "license": "NOASSERTION",
+      "collectedAt": "2026-08-08T14:26:40.270019+00:00",
+      "score": 50,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 10,
+        "documentation": 15,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 29,
+        "externalPrsMerged": 3,
+        "externalMergeRate": 0.10344827586206896,
+        "hasContributing": true,
+        "hasCodeOfConduct": true,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    },
+    {
+      "fullName": "pandas-dev/pandas",
+      "htmlUrl": "https://github.com/pandas-dev/pandas",
+      "description": "Flexible and powerful data analysis / manipulation library for Python, providing labeled data structures similar to R data.frame objects, statistical functions, and much more",
+      "language": "Python",
+      "stars": 49494,
+      "forks": 20250,
+      "openIssuesCount": 2881,
+      "archived": false,
+      "pushedAt": "2026-08-07T22:33:37Z",
+      "license": "BSD-3-Clause",
+      "collectedAt": "2026-08-08T14:26:40.270019+00:00",
+      "score": 35,
+      "scoreBreakdown": {
+        "activity": 25,
+        "externalMerge": 10,
+        "documentation": 0,
+        "opportunities": 0,
+        "archivePenalty": 0
+      },
+      "signals": {
+        "daysSincePush": 0,
+        "externalPrsSampled": 30,
+        "externalPrsMerged": 7,
+        "externalMergeRate": 0.23333333333333334,
+        "hasContributing": false,
+        "hasCodeOfConduct": false,
+        "labeledIssues": 0,
+        "readyIssues": 0,
+        "bestIssueScore": 0
+      }
+    }
+  ],
+  "opportunities": [
+    {
+      "repository": "astral-sh/ruff",
+      "number": 12613,
+      "title": "Make logger object name patterns configurable",
+      "htmlUrl": "https://github.com/astral-sh/ruff/issues/12613",
+      "labels": [
+        "type-inference",
+        "help wanted"
+      ],
+      "createdAt": "2024-08-01T15:35:26Z",
+      "updatedAt": "2026-08-07T20:28:52Z",
+      "daysSinceUpdate": 0,
+      "comments": 7,
+      "assigneeCount": 0,
+      "authorAssociation": "NONE",
+      "maintainerOpened": false,
+      "score": 80,
+      "scoreBreakdown": {
+        "label": 25,
+        "unassigned": 20,
+        "maintainerOpened": 0,
+        "freshness": 20,
+        "discussion": 15
+      }
+    }
+  ]
+}

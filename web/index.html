@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0d100c">
+  <meta name="description" content="Explore auditable GitHub signals before choosing where to contribute.">
+  <meta property="og:title" content="Contrib Signals - evidence before effort">
+  <meta property="og:description" content="A reproducible SQLite dataset and interactive dashboard for investigating OSS contribution opportunities.">
+  <meta property="og:image" content="https://legendairy93.github.io/contrib-signals/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Contrib Signals - evidence before effort</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar shell">
+    <a class="brand" href="#top"><span class="brand-mark">CS</span><span>Contrib Signals</span></a>
+    <nav aria-label="Primary navigation">
+      <a href="#repositories">Explore</a>
+      <a href="#methodology">Method</a>
+      <a href="https://github.com/LegenDairy93/contrib-signals">GitHub &nearr;</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Evidence before effort</p>
+        <h1>Find OSS work that might actually get reviewed.</h1>
+        <p class="lede">Good-first-issue labels are not enough. This dashboard combines repository activity, outside pull-request evidence, contribution docs and issue readiness into an inspectable dataset.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#repositories">Explore the snapshot &darr;</a>
+          <a class="button quiet" href="./data/opportunities.csv" download>Download CSV</a>
+        </div>
+        <p class="disclaimer">A high score is evidence to investigate, not maintainer consent.</p>
+      </div>
+      <div class="signal-board" aria-hidden="true">
+        <div class="board-head"><span>PUBLIC GITHUB EVIDENCE</span><span>SQL / SNAPSHOT 01</span></div>
+        <div class="signal-row"><span>Repository activity</span><i style="--value:85%"></i><b>25</b></div>
+        <div class="signal-row"><span>Outside PR merge rate</span><i style="--value:72%"></i><b>30</b></div>
+        <div class="signal-row"><span>Contribution docs</span><i style="--value:58%"></i><b>15</b></div>
+        <div class="signal-row"><span>Ready opportunities</span><i style="--value:66%"></i><b>30</b></div>
+        <div class="board-total"><span>Inspectable score</span><strong>100</strong></div>
+      </div>
+    </section>
+
+    <section class="snapshot-band">
+      <div class="shell snapshot-stats" id="snapshot-stats" aria-live="polite">
+        <div><strong>--</strong><span>repositories</span></div>
+        <div><strong>--</strong><span>languages</span></div>
+        <div><strong>--</strong><span>ready issues</span></div>
+        <div><strong>--</strong><span>evidence collected</span></div>
+      </div>
+    </section>
+
+    <section class="explorer shell" id="repositories">
+      <div class="section-intro">
+        <div><p class="eyebrow"><span></span> Repository explorer</p><h2>Inspect the reason,<br>not just the rank.</h2></div>
+        <p>Every score expands into its components. Filter the snapshot, then check the source repository and contribution policy before starting work.</p>
+      </div>
+
+      <form class="controls" id="controls" aria-label="Filter repositories">
+        <label class="search-field"><span>Search</span><input id="search" type="search" placeholder="Repository or description"></label>
+        <label><span>Language</span><select id="language"><option value="">All languages</option></select></label>
+        <label><span>Minimum score <output id="score-output">0</output></span><input id="min-score" type="range" min="0" max="100" step="5" value="0"></label>
+        <label><span>Sort</span><select id="sort"><option value="score">Strongest evidence</option><option value="merge">Outside merge rate</option><option value="activity">Most recently active</option><option value="stars">Most stars</option></select></label>
+        <label class="check"><input id="ready-only" type="checkbox"><span>Has a ready issue</span></label>
+      </form>
+
+      <div class="result-head"><p id="result-count">Loading snapshot...</p><button id="reset" type="button">Reset filters</button></div>
+      <div class="repo-list" id="repo-list" aria-live="polite"></div>
+    </section>
+
+    <section class="opportunity-section">
+      <div class="shell">
+        <div class="section-intro compact">
+          <div><p class="eyebrow"><span></span> Issue evidence</p><h2>Current opportunities.</h2></div>
+          <p>Issue readiness considers assignment, freshness, maintainer authorship, discussion level and explicit beginner labels.</p>
+        </div>
+        <div id="opportunity-list" class="opportunity-list"></div>
+      </div>
+    </section>
+
+    <section class="method shell" id="methodology">
+      <div class="method-copy">
+        <p class="eyebrow"><span></span> Methodology</p>
+        <h2>Readable SQL.<br>Fixed evidence time.</h2>
+        <p>Scores are anchored to each repository's collection timestamp, so opening the same snapshot tomorrow does not silently change its ranking.</p>
+        <a href="https://github.com/LegenDairy93/contrib-signals/blob/main/sql/schema.sql">Inspect the scoring SQL &nearr;</a>
+      </div>
+      <ol class="method-steps">
+        <li><span>01</span><div><b>Collect</b><p>Public metadata, recent outside PRs, contribution files and labelled issues.</p></div></li>
+        <li><span>02</span><div><b>Store</b><p>Raw evidence in SQLite with collection timestamps and source links.</p></div></li>
+        <li><span>03</span><div><b>Score</b><p>Transparent component weights in SQL views, not an opaque model judgment.</p></div></li>
+        <li><span>04</span><div><b>Investigate</b><p>Use the result as a shortlist; read policies and coordinate with maintainers.</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell footer-row"><span>Contrib Signals / Devaanga Prakash</span><span id="footer-date">Reproducible public snapshot</span></div>
+  </footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

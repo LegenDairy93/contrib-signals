@@ -2,6 +2,8 @@
 
 **An auditable SQLite dataset for finding open-source repositories where outside contributions are likely to be reviewed.**
 
+**[Explore the interactive public snapshot](https://legendairy93.github.io/contrib-signals/)**
+
 `good first issue` is only a label. It does not tell you whether a repository is active,
 whether outside pull requests are merged, whether the issue is already stale, or whether
 the documented contribution path exists.
@@ -40,6 +42,24 @@ python -m contrib_signals export --db data/contrib-signals.sqlite --out data/opp
 
 Set `GITHUB_TOKEN` for higher API limits. Without it, GitHub's public unauthenticated
 limit applies.
+
+## Browser dashboard
+
+The static dashboard in `web/` reads a committed JSON snapshot, so it needs no API key,
+server, or database at view time. Repository cards expose every score component, filters
+operate entirely in the browser, and the matching issue evidence is downloadable as CSV.
+
+Create or refresh both browser artifacts from any collected database:
+
+```bash
+python -m contrib_signals snapshot \
+  --db data/contrib-signals.sqlite \
+  --out web/data/snapshot.json \
+  --csv web/data/opportunities.csv
+```
+
+Snapshot age calculations are anchored to each repository's `collected_at` value. The
+same evidence therefore keeps the same score when reopened later.
 
 ## Example SQL
 

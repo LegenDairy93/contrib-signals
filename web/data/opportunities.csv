@@ -1,0 +1,2 @@
+repository,number,title,readiness_score,contribution_score,language,days_since_update,maintainer_opened,assignee_count,html_url
+astral-sh/ruff,12613,Make logger object name patterns configurable,80,85,Rust,0,0,0,https://github.com/astral-sh/ruff/issues/12613
