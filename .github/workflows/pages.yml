@@ -30,8 +30,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - name: Test static live discovery
-        run: node --test tests/web_live_scout.test.mjs
+          cache: npm
+          cache-dependency-path: apps/scout/package-lock.json
+      - name: Install Scout dependencies
+        run: npm ci
+        working-directory: apps/scout
+      - name: Build modern Scout for Pages
+        run: npm run build:pages
+        working-directory: apps/scout
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload dashboard

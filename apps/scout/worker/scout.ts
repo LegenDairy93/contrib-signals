@@ -115,7 +115,7 @@ export type Opportunity = {
     testCommands: string[];
     contributionRules: string[];
     discussion: string[];
-    policyChecks: Array<{ name: string; status: "found" | "not-found"; detail: string; url?: string }>;
+    policyChecks: Array<{ name: string; status: "found" | "not-found" | "unknown"; detail: string; url?: string }>;
     aiPolicy: string;
     risks: string[];
   };

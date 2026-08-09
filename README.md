@@ -50,13 +50,13 @@ commit counts, comments, pull requests opened, self-owned repositories, or AI-es
 quality. The valuable loop is discovery -> investigation -> attempt -> outcome -> verified
 record -> better future recommendations.
 
-## Evidence dataset and static snapshot
+## Public GitHub Pages preview
 
-**[Explore the dated public snapshot](https://legendairy93.github.io/contrib-signals/)**
+**[Try the browser-only Scout](https://legendairy93.github.io/contrib-signals/)**
 
-The Python and SQLite surface remains useful for reproducible research, scheduled
-datasets, and auditing the evidence logic. The public snapshot is dated evidence, not a
-live recommendation service.
+The public build preserves the modern Scout interface and performs a bounded anonymous
+GitHub issue search directly from the visitor's browser. Deep repository, policy,
+outside-PR, and duplicate-work checks are explicitly marked unknown until the Worker phase.
 
 ## What it measures
 
@@ -91,9 +91,10 @@ limit applies.
 
 ## Browser dashboard
 
-The static dashboard in `web/` reads a committed JSON snapshot, so it needs no API key,
-server, or database at view time. Cards expose activity, PR sample size, documentation,
-labelled opportunities, and evidence coverage without a combined score.
+The GitHub Pages entrypoint lives in `apps/scout/github-pages/` and reuses the production
+Scout component and design system. It needs no API key, server, or database at view time;
+the Pages workflow builds the static bundle before deployment. Anonymous rate limits are
+reported rather than hidden, and no fallback result is substituted.
 
 Create or refresh both browser artifacts from any collected database:
 

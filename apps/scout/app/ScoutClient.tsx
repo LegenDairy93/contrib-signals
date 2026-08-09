@@ -16,6 +16,12 @@ const DEFAULT_PROFILE: ScoutInput = {
   time: "few-hours",
 };
 
+export type ScoutTransport = {
+  modeLabel: string;
+  scout: (input: ScoutInput) => Promise<ScoutResponse>;
+  refresh: (input: ScoutInput, saved: Opportunity[]) => Promise<ScoutResponse>;
+};
+
 function KeywordPicker({ label, options, values, onChange, placeholder }: { label: string; options: string[]; values: string[]; onChange: (values: string[]) => void; placeholder: string }) {
   const [otherOpen, setOtherOpen] = useState(false);
   const [custom, setCustom] = useState("");
@@ -120,7 +126,7 @@ function OpportunityCard({
             {opportunity.repository}
           </a>
           <span>{opportunity.language}</span>
-          {rank === 1 ? <b>strongest signal</b> : null}
+          {rank === 1 ? <b>first candidate</b> : null}
         </div>
         <h3>
           <a href={opportunity.issueUrl} target="_blank" rel="noreferrer">
@@ -183,7 +189,7 @@ function OpportunityCard({
             {opportunity.brief.policyChecks.map((check) => {
               const content = (
                 <>
-                  <b>{check.status === "found" ? "FOUND" : "NOT FOUND"}</b>
+                  <b>{check.status === "found" ? "FOUND" : check.status === "unknown" ? "UNKNOWN" : "NOT FOUND"}</b>
                   <span>{check.name}</span>
                   <small>{check.detail}</small>
                 </>
@@ -225,7 +231,10 @@ function OpportunityCard({
                 </a>
               ))
             ) : (
-              <p>No title-level overlap appeared in the recent pull-request sample.</p>
+              <p>{opportunity.repositorySignals.sampledOutsidePulls
+                ? "No title-level overlap appeared in the available pull-request sample."
+                : "Duplicate-work evidence was not inspected. Search current issues and pull requests before starting."}
+              </p>
             )}
           </section>
           <EvidenceList opportunity={opportunity} />
@@ -249,7 +258,7 @@ function Empty({ saved }: { saved?: boolean }) {
   );
 }
 
-export default function ScoutClient() {
+export default function ScoutClient({ transport }: { transport?: ScoutTransport } = {}) {
   const [languages, setLanguages] = useState(DEFAULT_PROFILE.languages);
   const [skills, setSkills] = useState(DEFAULT_PROFILE.skills);
   const [interests, setInterests] = useState(DEFAULT_PROFILE.interests);
@@ -305,19 +314,20 @@ export default function ScoutClient() {
     setRefreshNote("");
     setView("results");
     try {
-      const response = await fetch("/api/scout", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          languages,
-          skills,
-          interests,
-          experience,
-          time,
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "The scout run failed.");
+      const profile = { languages, skills, interests, experience, time };
+      let payload: ScoutResponse;
+      if (transport) {
+        payload = await transport.scout(profile);
+      } else {
+        const response = await fetch("/api/scout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(profile),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "The scout run failed.");
+        payload = body as ScoutResponse;
+      }
       setResult(payload);
       setStatus("idle");
     } catch (caught) {
@@ -333,26 +343,24 @@ export default function ScoutClient() {
     setRefreshNote("");
     setView("saved");
     try {
-      const response = await fetch("/api/refresh", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          profile: {
-            languages,
-            skills,
-            interests,
-            experience,
-            time,
-          },
-          items: saved.map((item) => ({
-            repository: item.repository,
-            issueNumber: item.issueNumber,
-          })),
-        }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "The worklist refresh failed.");
-      const current = payload.opportunities as Opportunity[];
+      const profile = { languages, skills, interests, experience, time };
+      let payload: ScoutResponse;
+      if (transport) {
+        payload = await transport.refresh(profile, saved);
+      } else {
+        const response = await fetch("/api/refresh", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            profile,
+            items: saved.map((item) => ({ repository: item.repository, issueNumber: item.issueNumber })),
+          }),
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "The worklist refresh failed.");
+        payload = body as ScoutResponse;
+      }
+      const current = payload.opportunities;
       setSaved(current);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
       setResult(payload);
@@ -411,7 +419,7 @@ export default function ScoutClient() {
         <a className="brand" href="#top" aria-label="Contrib Signals home">
           <i aria-hidden="true" />
           <span>CONTRIB SIGNALS</span>
-          <small>LIVE SCOUT / R1</small>
+          <small>{transport?.modeLabel ?? "LIVE SCOUT / R1"}</small>
         </a>
         <nav aria-label="Primary">
           <a href="#how-it-works">Method</a>
@@ -428,10 +436,12 @@ export default function ScoutClient() {
         <div className="hero-copy">
           <span className="eyebrow">EVIDENCE-FIRST OPEN SOURCE DISCOVERY</span>
           <h1>Find one OSS issue worth your evening.</h1>
-          <p>
+          <p>{transport ? (
+            <>Current GitHub issues, honest evidence boundaries, and a local investigation worklist. Deep repository checks return with the Worker.</>
+          ) : <>
             Live GitHub evidence, duplicate-work checks, maintainer signals, and an
             investigation brief. No drive-by PR generator.
-          </p>
+          </>}</p>
         </div>
         <div className="hero-proof" aria-label="Product boundaries">
           <div><strong>01</strong><span>Search current issues</span></div>
@@ -564,8 +574,8 @@ export default function ScoutClient() {
           <div className="loading-state" role="status">
             <i />
             <div>
-              <strong>Tracing current GitHub evidence</strong>
-              <span>Issues → repository health → outside PRs → policies → duplicate work</span>
+              <strong>{transport ? "Searching current GitHub issues" : "Tracing current GitHub evidence"}</strong>
+              <span>{transport ? "Bounded anonymous search → issue evidence → explicit unknowns" : "Issues → repository health → outside PRs → policies → duplicate work"}</span>
             </div>
           </div>
         ) : null}
@@ -603,7 +613,7 @@ export default function ScoutClient() {
             </div>
             <div>
               <span>Repositories inspected</span>
-              <strong>{result.coverage.repositoriesInspected} / {result.coverage.repositoryLimit}</strong>
+              <strong>{result.coverage.repositoryLimit ? `${result.coverage.repositoriesInspected} / ${result.coverage.repositoryLimit}` : "Issue-level only"}</strong>
             </div>
             <div>
               <span>Evidence requests</span>
