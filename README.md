@@ -1,8 +1,8 @@
-# Contrib Signals
+# Forkyssey
 
 **Find open-source work worth doing, then investigate it before you code.**
 
-Contrib Signals checks current issue state, repository activity, outside-contributor
+Forkyssey checks current issue state, repository activity, outside-contributor
 pull requests, maintainer responses, policies, and possible duplicate work. Every
 important signal links back to GitHub evidence.
 
@@ -10,7 +10,7 @@ important signal links back to GitHub evidence.
 
 The full-stack app in apps/scout turns a small contribution profile into at most eight
 current opportunities, categorical evidence states, visible coverage, a cited investigation brief,
-policy checks, duplicate-work warnings, and a refreshable local worklist.
+policy checks, duplicate-work warnings, and a refreshable local quest log.
 
 Its production build, deterministic API tests, and one real GitHub smoke run pass.
 It is not advertised as publicly live until the hosted secret and fresh-user gates in
@@ -26,13 +26,13 @@ generates unsolicited patches, pushes branches, or opens pull requests.
 
 ## Product direction
 
-Contrib Signals is the active product. Its long-term object is:
+Forkyssey is the active product. Its long-term object is:
 
 > Find worthwhile open-source work, contribute responsibly, and build a verified
 > public record of what you accomplished.
 
 The current release is the **Scout**: live discovery, cited evidence, readiness checks,
-and a saved investigation worklist. The next product loop is deliberately outcome-led:
+and a saved quest log. The next product loop is deliberately outcome-led:
 
 1. **Journey** - move an opportunity through investigating, maintainer contact,
    planning, work, pull request, review, and a final merged, declined, or abandoned
@@ -45,14 +45,14 @@ and a saved investigation worklist. The next product loop is deliberately outcom
 4. **Constrained boards** - only after verified journeys exist, test small seasonal or
    community boards with explicit rules and abuse resistance.
 
-The ranking layer is not the product. Contrib Signals will not reward lines changed,
+The ranking layer is not the product. Forkyssey will not reward lines changed,
 commit counts, comments, pull requests opened, self-owned repositories, or AI-estimated
 quality. The valuable loop is discovery -> investigation -> attempt -> outcome -> verified
 record -> better future recommendations.
 
 ## Public GitHub Pages preview
 
-**[Try the browser-only Scout](https://legendairy93.github.io/contrib-signals/)**
+**[Try the browser-only Scout](https://legendairy93.github.io/forkyssey/)**
 
 The public build preserves the modern Scout interface and performs a bounded anonymous
 GitHub issue search directly from the visitor's browser. Deep repository, policy,
@@ -77,13 +77,13 @@ Python 3.11 or newer is sufficient; there are no runtime dependencies.
 ```bash
 python -m pip install -e .
 
-python -m contrib_signals collect \
+python -m forkyssey collect \
   --repo vercel/ai \
   --repo pandas-dev/pandas \
-  --db data/contrib-signals.sqlite
+  --db data/forkyssey.sqlite
 
-python -m contrib_signals report --db data/contrib-signals.sqlite --limit 20
-python -m contrib_signals export --db data/contrib-signals.sqlite --out data/opportunities.csv
+python -m forkyssey report --db data/forkyssey.sqlite --limit 20
+python -m forkyssey export --db data/forkyssey.sqlite --out data/opportunities.csv
 ```
 
 Set `GITHUB_TOKEN` for higher API limits. Without it, GitHub's public unauthenticated
@@ -99,8 +99,8 @@ reported rather than hidden, and no fallback result is substituted.
 Create or refresh both browser artifacts from any collected database:
 
 ```bash
-python -m contrib_signals snapshot \
-  --db data/contrib-signals.sqlite \
+python -m forkyssey snapshot \
+  --db data/forkyssey.sqlite \
   --out web/data/snapshot.json \
   --csv web/data/opportunities.csv
 ```

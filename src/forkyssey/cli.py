@@ -13,25 +13,25 @@ from .snapshot import write_snapshot
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="contrib-signals",
+        prog="forkyssey",
         description="Collect and query auditable GitHub contribution signals.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     collect = subparsers.add_parser("collect", help="Collect public evidence from GitHub")
     collect.add_argument("--repo", action="append", required=True, help="owner/repository (repeatable)")
-    collect.add_argument("--db", default="data/contrib-signals.sqlite")
+    collect.add_argument("--db", default="data/forkyssey.sqlite")
 
     report = subparsers.add_parser("report", help="Print ranked contribution opportunities")
-    report.add_argument("--db", default="data/contrib-signals.sqlite")
+    report.add_argument("--db", default="data/forkyssey.sqlite")
     report.add_argument("--limit", type=int, default=20)
 
     export = subparsers.add_parser("export", help="Export ranked opportunities as CSV")
-    export.add_argument("--db", default="data/contrib-signals.sqlite")
+    export.add_argument("--db", default="data/forkyssey.sqlite")
     export.add_argument("--out", default="data/opportunities.csv")
 
     snapshot = subparsers.add_parser("snapshot", help="Write a reproducible static dashboard snapshot")
-    snapshot.add_argument("--db", default="data/contrib-signals.sqlite")
+    snapshot.add_argument("--db", default="data/forkyssey.sqlite")
     snapshot.add_argument("--out", default="web/data/snapshot.json")
     snapshot.add_argument("--csv", default="web/data/opportunities.csv")
     return parser

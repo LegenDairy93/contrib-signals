@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "contrib-signals"
+name = "forkyssey"
 version = "0.2.0"
-description = "Auditable GitHub contribution-opportunity data in SQLite"
+description = "Evidence-first upstream quest discovery for GitHub"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -13,7 +13,7 @@ authors = [{ name = "Devaanga Prakash" }]
 dependencies = []
 
 [project.scripts]
-contrib-signals = "contrib_signals.cli:main"
+forkyssey = "forkyssey.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -22,4 +22,4 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-contrib_signals = ["data/*.sql"]
+forkyssey = ["data/*.sql"]

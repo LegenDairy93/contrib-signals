@@ -33,7 +33,7 @@ class GitHubClient:
             url = f"{url}?{query}"
         headers = {
             "Accept": "application/vnd.github+json",
-            "User-Agent": "contrib-signals/0.2",
+            "User-Agent": "forkyssey/0.2",
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if self.token:

@@ -1,11 +1,11 @@
-# Contrib Signals — hosted scout
+# Forkyssey — hosted scout
 
-This app turns the Contrib Signals evidence engine into a bounded product loop:
+This app turns the Forkyssey evidence engine into a bounded product loop:
 
-1. describe a contribution window,
+1. describe an upstream window,
 2. search current GitHub issues,
 3. inspect fit, repository readiness, duplicate-work risk, and policy evidence,
-4. save a local worklist,
+4. save a local quest log,
 5. export the shortlist and do the contribution yourself.
 
 It never claims an issue, posts a comment, generates an unsolicited patch, pushes a

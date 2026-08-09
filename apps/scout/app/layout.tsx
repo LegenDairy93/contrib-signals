@@ -2,18 +2,18 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Contrib Signals",
-  description: "Find open-source work worth doing.",
+  title: "Forkyssey — Discover your next upstream quest",
+  description: "Evidence-first discovery for open-source work worth doing.",
   openGraph: {
-    title: "Contrib Signals — Find OSS work worth doing",
+    title: "Forkyssey — Discover your next upstream quest",
     description:
       "Live GitHub evidence, duplicate-work checks, maintainer signals, and cited investigation briefs.",
-    images: [{ url: "/og.png", width: 1743, height: 909, alt: "Contrib Signals evidence map" }],
+    images: [{ url: "/og.png", width: 1743, height: 909, alt: "Forkyssey evidence map" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contrib Signals — Find OSS work worth doing",
-    description: "An evidence-first open-source contribution scout.",
+    title: "Forkyssey — Discover your next upstream quest",
+    description: "Evidence-first discovery for open-source work worth doing.",
     images: ["/og.png"],
   },
   icons: {

@@ -338,7 +338,7 @@ class GitHub {
       const url = pathOrUrl.startsWith("http") ? pathOrUrl : API + pathOrUrl;
       const headers: Record<string, string> = {
         Accept: "application/vnd.github+json",
-        "User-Agent": "contrib-signals/0.2",
+        "User-Agent": "forkyssey/0.2",
         "X-GitHub-Api-Version": "2022-11-28",
       };
       if (this.token) headers.Authorization = "Bearer " + this.token;
@@ -956,7 +956,7 @@ export async function runScout(
       cache: "miss",
     },
     notice:
-      "Contrib Signals recommends investigation, not contribution. Verify scope and ask before coding when maintainers request it.",
+      "Forkyssey recommends investigation, not contribution. Verify scope and ask before coding when maintainers request it.",
   };
 }
 
@@ -967,12 +967,12 @@ export type RefreshItem = {
 
 function validateRefresh(raw: unknown): { profile: ScoutInput; items: RefreshItem[] } {
   if (!raw || typeof raw !== "object") {
-    throw new ScoutError(400, "Send a JSON worklist refresh request.");
+    throw new ScoutError(400, "Send a JSON quest log refresh request.");
   }
   const body = raw as Record<string, unknown>;
   const profile = validateInput(body.profile);
   if (!Array.isArray(body.items)) {
-    throw new ScoutError(400, "Send worklist items to refresh.");
+    throw new ScoutError(400, "Send quest log items to refresh.");
   }
   const items = body.items
     .map((item) => {
@@ -1086,7 +1086,7 @@ export async function handleRefreshRequest(
   env: EnvLike | undefined,
 ): Promise<Response> {
   if (request.method !== "POST") {
-    return json({ error: "Use POST to refresh a worklist." }, 405, { Allow: "POST" });
+    return json({ error: "Use POST to refresh a quest log." }, 405, { Allow: "POST" });
   }
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) {

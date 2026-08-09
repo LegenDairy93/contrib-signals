@@ -6,7 +6,8 @@ import type { Opportunity, ScoutInput, ScoutResponse } from "../worker/scout";
 const LANGUAGES = ["Python", "TypeScript", "JavaScript", "SQL", "Go", "Rust"];
 const SKILLS = ["Testing", "Documentation", "Data analysis", "Bug fixing", "APIs", "Frontend", "Backend", "DevOps", "Security"];
 const INTERESTS = ["Developer tools", "AI / LLMs", "Analytics", "Data engineering", "Automation", "OSS infrastructure", "Accessibility", "Privacy"];
-const STORAGE_KEY = "contrib-signals-worklist-v2";
+const STORAGE_KEY = "forkyssey-quest-log-v1";
+const LEGACY_STORAGE_KEY = "contrib-signals-worklist-v2";
 
 const DEFAULT_PROFILE: ScoutInput = {
   languages: ["Python", "TypeScript"],
@@ -126,7 +127,7 @@ function OpportunityCard({
             {opportunity.repository}
           </a>
           <span>{opportunity.language}</span>
-          {rank === 1 ? <b>first candidate</b> : null}
+          {rank === 1 ? <b>first quest</b> : null}
         </div>
         <h3>
           <a href={opportunity.issueUrl} target="_blank" rel="noreferrer">
@@ -134,7 +135,7 @@ function OpportunityCard({
           </a>
         </h3>
         <p className="scope">{opportunity.summary}</p>
-        <div className="signal-grid" aria-label="Opportunity evidence states">
+        <div className="signal-grid" aria-label="Quest evidence states">
           <SignalBadge label="Profile fit" value={opportunity.fit.level} tone={opportunity.fit.level} />
           <SignalBadge label="Contribution state" value={opportunity.readiness.state} tone={opportunity.readiness.state} />
           <SignalBadge label="Evidence coverage" value={opportunity.evidenceCoverage.level} tone={opportunity.evidenceCoverage.level} />
@@ -162,7 +163,7 @@ function OpportunityCard({
             className={"save-button " + (saved ? "is-saved" : "")}
             onClick={() => onSave(opportunity)}
           >
-            {saved ? "Saved to worklist" : "Save for later"}
+            {saved ? "Added to quest log" : "Add to quest log"}
           </button>
           <a href={opportunity.issueUrl} target="_blank" rel="noreferrer" className="github-button">
             Open on GitHub ↗
@@ -248,7 +249,7 @@ function Empty({ saved }: { saved?: boolean }) {
   return (
     <div className="empty-state">
       <span aria-hidden="true">{saved ? "◇" : "⌁"}</span>
-      <h3>{saved ? "Your worklist is empty" : "No live match passed the filters"}</h3>
+      <h3>{saved ? "Your quest log is empty" : "No live match passed the filters"}</h3>
       <p>
         {saved
           ? "Save an investigated issue. Nothing is claimed or posted on GitHub."
@@ -278,13 +279,16 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Opportunity[];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
         queueMicrotask(() => setSaved(parsed));
       }
     } catch {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
     }
   }, []);
 
@@ -357,7 +361,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
           }),
         });
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "The worklist refresh failed.");
+        if (!response.ok) throw new Error(body.error ?? "The quest log refresh failed.");
         payload = body as ScoutResponse;
       }
       const current = payload.opportunities;
@@ -375,12 +379,12 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
     } catch (caught) {
       setStatus("error");
       setError(
-        caught instanceof Error ? caught.message : "The worklist refresh failed.",
+        caught instanceof Error ? caught.message : "The quest log refresh failed.",
       );
     }
   }
 
-  function exportWorklist() {
+  function exportQuestLog() {
     const rows = [
       ["repository", "issue", "title", "profile_fit", "contribution_state", "evidence_coverage", "work_type", "url"],
       ...saved.map((item) => [
@@ -397,7 +401,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
     const csv = rows
       .map((row) => row.map((cell) => '"' + cell.replaceAll('"', '""') + '"').join(","))
       .join("\n");
-    download("contrib-signals-worklist.csv", csv, "text/csv");
+    download("forkyssey-quest-log.csv", csv, "text/csv");
   }
 
   const visible = useMemo(() => {
@@ -416,19 +420,19 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
   return (
     <main>
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="Contrib Signals home">
+        <a className="brand" href="#top" aria-label="Forkyssey home">
           <i aria-hidden="true" />
-          <span>CONTRIB SIGNALS</span>
+          <span>FORKYSSEY</span>
           <small>{transport?.modeLabel ?? "LIVE SCOUT / R1"}</small>
         </a>
         <nav aria-label="Primary">
           <a href="#how-it-works">Method</a>
-          <a href="https://github.com/LegenDairy93/contrib-signals" target="_blank" rel="noreferrer">
+          <a href="https://github.com/LegenDairy93/forkyssey" target="_blank" rel="noreferrer">
             Source ↗
           </a>
         </nav>
         <button className="worklist-button" type="button" onClick={() => setView("saved")}>
-          Worklist <b>{saved.length}</b>
+          Quest log <b>{saved.length}</b>
         </button>
       </header>
 
@@ -437,7 +441,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
           <span className="eyebrow">EVIDENCE-FIRST OPEN SOURCE DISCOVERY</span>
           <h1>Find one OSS issue worth your evening.</h1>
           <p>{transport ? (
-            <>Current GitHub issues, honest evidence boundaries, and a local investigation worklist. Deep repository checks return with the Worker.</>
+            <>Current GitHub issues, honest evidence boundaries, and a local quest log. Deep repository checks return with the Worker.</>
           ) : <>
             Live GitHub evidence, duplicate-work checks, maintainer signals, and an
             investigation brief. No drive-by PR generator.
@@ -452,7 +456,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
 
       <form className="scout-form" onSubmit={run}>
         <div className="form-heading">
-          <span>YOUR CONTRIBUTION WINDOW</span>
+          <span>YOUR UPSTREAM WINDOW</span>
           <p>Defaults are ready. Change only what matters.</p>
         </div>
         <fieldset className="language-field">
@@ -490,7 +494,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
           </select>
         </label>
         <button className="run-button" disabled={status === "loading"}>
-          {status === "loading" ? "Checking GitHub evidence…" : "Scout live opportunities"}
+          {status === "loading" ? "Checking GitHub evidence…" : "Find live quests"}
           <span aria-hidden="true">→</span>
         </button>
       </form>
@@ -498,8 +502,8 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
       <section className="results-shell" aria-live="polite" aria-busy={status === "loading"}>
         <div className="results-head">
           <div>
-            <span>FIELD REPORT</span>
-            <h2>{view === "saved" ? "Your investigation worklist" : "Current opportunities"}</h2>
+            <span>QUEST REPORT</span>
+            <h2>{view === "saved" ? "Your quest log" : "Current quests"}</h2>
           </div>
           <div className="view-tabs" role="tablist" aria-label="Result views">
             <button type="button" role="tab" aria-selected={view === "results"} onClick={() => setView("results")}>
@@ -519,7 +523,7 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
               >
                 Refresh evidence
               </button>
-              <button className="export-button" type="button" onClick={exportWorklist}>
+              <button className="export-button" type="button" onClick={exportQuestLog}>
                 Export CSV
               </button>
             </div>
@@ -652,9 +656,9 @@ export default function ScoutClient({ transport }: { transport?: ScoutTransport 
       </section>
 
       <footer className="site-footer">
-        <strong>CONTRIB SIGNALS</strong>
+        <strong>FORKYSSEY</strong>
         <p>Built for careful contributors, not contribution volume.</p>
-        <a href="https://github.com/LegenDairy93/contrib-signals" target="_blank" rel="noreferrer">
+        <a href="https://github.com/LegenDairy93/forkyssey" target="_blank" rel="noreferrer">
           Read the evidence code ↗
         </a>
       </footer>

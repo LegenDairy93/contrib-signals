@@ -1,6 +1,6 @@
 # Hosted contribution scout acceptance
 
-Contrib Signals is the evidence engine. The hosted product helps a contributor find and investigate realistic opportunities without automating drive-by contributions.
+Forkyssey is the evidence engine. The hosted product helps a contributor find and investigate realistic opportunities without automating drive-by contributions.
 
 ## Hosted scout progress — 2026-08-09
 
@@ -15,7 +15,7 @@ Contrib Signals is the evidence engine. The hosted product helps a contributor f
 | CS-07 | Pass locally | Related issues and recent pull requests are surfaced through deterministic title overlap; linked PR issues are excluded at search time. |
 | CS-08 | Pass locally | Fit and readiness are separate scores with reasons, negative signals, and explicit uncertainty. |
 | CS-09 | Pass locally | The brief exposes scope, lexical code-area hints, evidenced setup/tests, discussion count, rules, risks, and source links. |
-| CS-10 | Pass locally | Browser worklist supports save, remove, targeted evidence refresh, and CSV export using local storage. |
+| CS-10 | Pass locally | Browser quest log supports save, remove, targeted evidence refresh, and CSV export using local storage. |
 | CS-11 | Pass | No route comments, claims, writes repository content, creates branches, or opens pull requests. |
 | CS-12 | In progress | Validation, same-origin rules, caching, four-call concurrency, 25-second deadline, and redaction tests pass. Uncached GitHub work now uses an atomic D1 quota shared across Worker instances, stores only salted client hashes, cleans expired windows, and fails closed when the ledger is unavailable. The hosted secret check remains. |
 | CS-13 | Pass | Current briefs are deterministic; no model synthesis is mixed into evidence. |
@@ -41,7 +41,7 @@ JavaScript bundle. The app is still intentionally unpublished.
 | CS-07 | Duplicate-work risk is checked | Related issues and open/recent PRs are surfaced before recommending an opportunity. |
 | CS-08 | Results are personalized | Fit score and readiness score are separate, with evidence, uncertainty, and explicit reasons not to contribute. |
 | CS-09 | Issue investigation brief is useful | Brief includes scope, likely code areas, setup/test commands when evidenced, relevant discussion, contribution rules, risks, and citations. |
-| CS-10 | Saved worklist completes the loop | Users can save, remove, refresh, and export investigated opportunities without the system claiming them. |
+| CS-10 | Saved quest log completes the loop | Users can save, remove, refresh, and export investigated opportunities without the system claiming them. |
 | CS-11 | No-slop boundary is enforced | The product never automatically comments, claims issues, generates unsolicited patches, pushes branches, or opens PRs. |
 | CS-12 | Hosted security and limits work | GitHub/model credentials stay server-side; validation, caching, rate limits, timeouts, origin rules, and safe error redaction are tested. |
 | CS-13 | Grounded assistance is distinguishable | Deterministic evidence is separated from model-generated synthesis; every factual brief claim links to source evidence. |

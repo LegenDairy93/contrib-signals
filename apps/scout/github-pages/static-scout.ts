@@ -223,13 +223,13 @@ async function refresh(input: ScoutInput, saved: Opportunity[]): Promise<ScoutRe
   const targets = saved.slice(0, 6);
   for (const item of targets) {
     const response = await fetch(`https://api.github.com/repos/${item.repository}/issues/${item.issueNumber}`);
-    if (response.status === 403 || response.status === 429) throw new Error("GitHub temporarily rate-limited worklist refresh on this network.");
+    if (response.status === 403 || response.status === 429) throw new Error("GitHub temporarily rate-limited quest log refresh on this network.");
     if (!response.ok) continue;
     const issue = await response.json() as SearchIssue & { state?: string; assignee?: unknown; pull_request?: unknown };
     if (issue.state === "open" && !issue.assignee && !issue.pull_request) refreshed.push(toOpportunity({ issue, language: item.language }, input));
   }
   return {
-    generatedAt: new Date().toISOString(), query: "targeted worklist refresh", queries: [], input,
+    generatedAt: new Date().toISOString(), query: "targeted quest log refresh", queries: [], input,
     opportunities: refreshed, excluded: [],
     coverage: { languagesRequested: input.languages, languagesSearched: [], candidatesExamined: targets.length, repositoriesInspected: 0, repositoryLimit: 0, resultLimit: 6, labelFamilies: [], blindSpots: ["Refresh checks current issue state only."] },
     limits: { githubCalls: targets.length, maxGithubCalls: 6, cache: "miss" },

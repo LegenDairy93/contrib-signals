@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   root: "github-pages",
-  base: "/contrib-signals/",
+  base: "/forkyssey/",
   publicDir: "../public",
   plugins: [react()],
   build: {

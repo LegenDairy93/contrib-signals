@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from contrib_signals.db import connect
-from contrib_signals.snapshot import build_snapshot, write_snapshot
+from forkyssey.db import connect
+from forkyssey.snapshot import build_snapshot, write_snapshot
 
 
 class SnapshotTests(unittest.TestCase):

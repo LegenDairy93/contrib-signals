@@ -1,4 +1,4 @@
-/** Cloudflare Worker entry point for the Contrib Signals scout. */
+/** Cloudflare Worker entry point for the Forkyssey scout. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { handleRefreshRequest, handleScoutRequest } from "./scout";

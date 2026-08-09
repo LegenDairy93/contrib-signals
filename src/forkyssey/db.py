@@ -7,7 +7,7 @@ from pathlib import Path
 
 def schema_text() -> str:
     return (
-        files("contrib_signals")
+        files("forkyssey")
         .joinpath("data")
         .joinpath("schema.sql")
         .read_text(encoding="utf-8")

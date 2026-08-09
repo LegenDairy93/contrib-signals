@@ -60,7 +60,7 @@ test("server-renders the product rather than the starter or a baked result", asy
   const html = await response.text();
   assert.match(html, /Find one OSS issue worth your evening/);
   assert.match(html, /No drive-by PR generator/);
-  assert.match(html, /Scout live opportunities/);
+  assert.match(html, /Find live quests/);
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview|strongest signal/);
 });
 

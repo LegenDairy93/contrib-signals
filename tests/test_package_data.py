@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from contrib_signals.db import connect, schema_text
+from forkyssey.db import connect, schema_text
 
 
 class PackageDataTests(unittest.TestCase):

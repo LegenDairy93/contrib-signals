@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from contrib_signals.github import GitHubClient, GitHubError
+from forkyssey.github import GitHubClient, GitHubError
 
 
 class FakeResponse:
@@ -26,8 +26,8 @@ class FakeResponse:
 
 
 class GitHubClientTests(unittest.TestCase):
-    @patch("contrib_signals.github.time.sleep", return_value=None)
-    @patch("contrib_signals.github.urllib.request.urlopen")
+    @patch("forkyssey.github.time.sleep", return_value=None)
+    @patch("forkyssey.github.urllib.request.urlopen")
     def test_retries_one_transient_disconnect(self, urlopen, _sleep) -> None:
         urlopen.side_effect = [
             http.client.RemoteDisconnected("closed"),
@@ -39,8 +39,8 @@ class GitHubClientTests(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.headers["Authorization"], "Bearer secret")
 
-    @patch("contrib_signals.github.time.sleep", return_value=None)
-    @patch("contrib_signals.github.urllib.request.urlopen")
+    @patch("forkyssey.github.time.sleep", return_value=None)
+    @patch("forkyssey.github.urllib.request.urlopen")
     def test_exhausted_disconnect_is_clean_and_redacted(self, urlopen, _sleep) -> None:
         urlopen.side_effect = http.client.RemoteDisconnected("closed")
         with self.assertRaises(GitHubError) as context:
@@ -49,7 +49,7 @@ class GitHubClientTests(unittest.TestCase):
         self.assertNotIn("secret", str(context.exception))
         self.assertEqual(urlopen.call_count, 2)
 
-    @patch("contrib_signals.github.urllib.request.urlopen")
+    @patch("forkyssey.github.urllib.request.urlopen")
     def test_exists_treats_404_as_missing(self, urlopen) -> None:
         urlopen.side_effect = urllib.error.HTTPError(
             "https://api.github.com/repos/acme/tool/contents/CONTRIBUTING.md",
