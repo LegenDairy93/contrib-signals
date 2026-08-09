@@ -94,7 +94,7 @@ h1{max-width:800px;margin:0;font-size:clamp(52px,7vw,98px);line-height:.91;lette
 .section-intro.compact{margin-bottom:40px}
 .opportunity-list{display:grid;gap:12px}
 .opportunity-card{display:grid;grid-template-columns:80px 1fr auto;gap:24px;align-items:center;padding:24px;border:1px solid #aeb5a4;background:#fffdf6}
-.opp-score{font:760 30px/1 var(--mono);color:#304400}
+.opp-state{font:760 16px/1 var(--mono);color:#304400}
 .opportunity-card h3{margin:0;font-size:19px}
 .opportunity-card h3 a{text-decoration:none}
 .opportunity-card h3 a:hover{text-decoration:underline}
@@ -149,4 +149,56 @@ footer{border-top:1px solid var(--line);background:#090b08}
   .evidence-state{width:54px}
   .signal-summary,.ready-count{grid-column:2}
   .repo-card details .breakdown{grid-template-columns:1fr}
+}
+
+.live-scout{padding:110px 0 120px}
+.live-intro{margin-bottom:38px}
+.live-form{display:grid;grid-template-columns:1fr 1.4fr 1fr auto;gap:1px;border:1px solid var(--line);background:var(--line)}
+.live-form label{display:block;padding:15px 16px;background:#11150f}
+.live-form label span{display:block;margin-bottom:9px;color:var(--muted);font:600 9px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase}
+.live-form input,.live-form select{width:100%;height:32px;border:0;outline:0;background:transparent;color:var(--ink);font:600 12px/1 var(--mono)}
+.live-form select option{background:#11150f}
+.live-form button{min-width:160px;border:0;background:var(--acid);color:#10130f;cursor:pointer;font:800 11px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase}
+.live-form button:hover{background:#dbff7d}
+.live-form button:disabled{cursor:wait;opacity:.6}
+.live-notice{display:flex;align-items:center;gap:14px;margin:18px 0;color:var(--muted);font:600 10px/1.5 var(--mono)}
+.live-notice>span{flex:none;padding:6px 8px;border:1px solid rgba(201,255,56,.5);color:var(--acid);font-size:9px;letter-spacing:.06em}
+.live-notice p{margin:0}
+.live-results{display:grid;gap:12px}
+.live-empty{padding:44px;border:1px dashed var(--line);color:var(--muted);text-align:center}
+.live-card{display:grid;grid-template-columns:92px minmax(0,1fr) 190px;gap:24px;align-items:center;border:1px solid var(--line);background:var(--panel)}
+.live-state{align-self:stretch;display:grid;place-items:center;align-content:center;gap:7px;border-right:1px solid var(--line);font-family:var(--mono);text-align:center;text-transform:uppercase}
+.live-state span{color:var(--muted);font-size:8px;letter-spacing:.08em}
+.live-state b{max-width:86px;color:var(--acid);font-size:10px;overflow-wrap:anywhere}
+.live-copy{padding:22px 0}
+.live-repo{margin:0 0 7px!important;color:var(--gold)!important;text-transform:uppercase}
+.live-copy h3{margin:0;font-size:20px;line-height:1.25;letter-spacing:-.02em}
+.live-copy h3 a{text-decoration:none}
+.live-copy h3 a:hover{color:var(--acid)}
+.live-facts{display:grid;gap:7px;padding-right:22px;color:var(--muted);font:600 10px/1.3 var(--mono);text-transform:uppercase}
+.live-card details{grid-column:1/-1;border-top:1px solid var(--line-soft)}
+.live-card summary{padding:11px 20px;cursor:pointer;color:var(--muted);font:600 9px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;list-style:none}
+.live-card summary::-webkit-details-marker{display:none}
+.live-card summary:after{content:"+";float:right;color:var(--acid)}
+.live-card details[open] summary:after{content:"-"}
+.live-card details p{margin:0;padding:0 20px 18px;color:var(--muted);font-size:13px}
+.live-boundary{max-width:800px;margin:18px 0 0;color:#7f8878;font:500 10px/1.5 var(--mono)}
+
+@media(max-width:900px){
+  .live-form{grid-template-columns:repeat(2,1fr)}
+  .live-form button{min-height:58px}
+  .live-card{grid-template-columns:76px 1fr}
+  .live-facts{grid-column:2;padding:0 20px 20px 0;grid-template-columns:repeat(3,1fr)}
+}
+
+@media(max-width:620px){
+  .live-scout{padding:78px 0 88px}
+  .live-form{grid-template-columns:1fr}
+  .live-form button{min-height:52px}
+  .live-notice{align-items:flex-start;flex-direction:column}
+  .live-card{grid-template-columns:58px 1fr;gap:14px}
+  .live-state{min-width:58px}
+  .live-copy{padding:18px 14px 18px 0}
+  .live-copy h3{font-size:17px}
+  .live-facts{grid-template-columns:1fr;padding-right:14px}
 }

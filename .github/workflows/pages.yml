@@ -26,6 +26,12 @@ jobs:
           python-version: "3.13"
       - name: Test data pipeline
         run: python -m unittest discover -s tests -v
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Test static live discovery
+        run: node --test tests/web_live_scout.test.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload dashboard

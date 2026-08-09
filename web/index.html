@@ -16,6 +16,7 @@
   <header class="topbar shell">
     <a class="brand" href="#top"><span class="brand-mark">CS</span><span>Contrib Signals</span></a>
     <nav aria-label="Primary navigation">
+      <a href="#live-scout">Live scout</a>
       <a href="#repositories">Explore</a>
       <a href="#methodology">Method</a>
       <a href="https://github.com/LegenDairy93/contrib-signals">GitHub &nearr;</a>
@@ -29,7 +30,7 @@
         <h1>Find OSS work that might actually get reviewed.</h1>
         <p class="lede">Good-first-issue labels are not enough. This dashboard combines repository activity, outside pull-request evidence, contribution docs and issue readiness into an inspectable dataset.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#repositories">Explore the snapshot &darr;</a>
+          <a class="button primary" href="#live-scout">Try live discovery &darr;</a>
           <a class="button quiet" href="./data/opportunities.csv" download>Download CSV</a>
         </div>
         <p class="disclaimer">This is a dated, bounded evidence sample—not a complete project index or maintainer recommendation.</p>
@@ -42,6 +43,30 @@
         <div class="signal-row"><span>Labelled opportunities</span><i style="--value:66%"></i><b>Bounded</b></div>
         <div class="board-total"><span>Unknown stays unknown</span><strong>NO TOTAL</strong></div>
       </div>
+    </section>
+
+    <section class="live-scout shell" id="live-scout">
+      <div class="section-intro live-intro">
+        <div><p class="eyebrow"><span></span> Anonymous live preview</p><h2>Scout current<br>GitHub issues.</h2></div>
+        <p>Runs directly in this tab with no account and no embedded token. Each search makes at most two public GitHub requests and keeps only six compact candidates.</p>
+      </div>
+      <form class="live-form" id="live-scout-form" aria-label="Scout current GitHub issues">
+        <label><span>Language</span><input name="language" list="live-languages" value="Rust" maxlength="30" required autocomplete="off"></label>
+        <datalist id="live-languages">
+          <option value="Rust"><option value="TypeScript"><option value="Python"><option value="Go"><option value="JavaScript"><option value="Java"><option value="C++">
+        </datalist>
+        <label><span>Keywords · optional</span><input name="keywords" maxlength="50" placeholder="parser, cli, accessibility" autocomplete="off"></label>
+        <label><span>Work type</span><select name="workType"><option value="">Any type</option><option value="code">Code</option><option value="tests">Tests</option><option value="documentation">Documentation</option><option value="design">Design / accessibility</option></select></label>
+        <button type="submit">Scout GitHub</button>
+      </form>
+      <div class="live-notice">
+        <span>LIVE / ISSUE-LEVEL</span>
+        <p id="live-scout-status" aria-live="polite">Ready. Anonymous GitHub limits apply to each visitor's network.</p>
+      </div>
+      <div class="live-results" id="live-scout-results" aria-live="polite">
+        <div class="live-empty">Choose a language and run a bounded live search. The deeper dated evidence archive remains below.</div>
+      </div>
+      <p class="live-boundary">This preview verifies issue-level facts only. It does not claim maintainer interest, difficulty, acceptance probability, or repository quality.</p>
     </section>
 
     <section class="snapshot-band">
@@ -100,6 +125,7 @@
   <footer>
     <div class="shell footer-row"><span>Contrib Signals / Devaanga Prakash</span><span id="footer-date">Reproducible public snapshot</span></div>
   </footer>
+  <script type="module" src="live-scout.js"></script>
   <script type="module" src="evidence.js"></script>
 </body>
 </html>
