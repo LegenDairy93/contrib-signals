@@ -125,3 +125,28 @@ footer{border-top:1px solid var(--line);background:#090b08}
   .opportunity-section{padding:80px 0}.method{padding:85px 0}.footer-row{flex-direction:column;align-items:flex-start;justify-content:center}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.repo-card{transition:none}}
+
+.evidence-state{width:72px;min-height:66px;display:grid;place-items:center;align-content:center;gap:7px;border:1px solid var(--line);font-family:var(--mono);text-align:center;text-transform:uppercase}
+.evidence-state span{color:var(--muted);font-size:8px;letter-spacing:.08em}
+.evidence-state b{font-size:10px;color:var(--gold)}
+.evidence-strong .evidence-state{border-color:rgba(201,255,56,.55)}
+.evidence-strong .evidence-state b{color:var(--acid)}
+.evidence-thin .evidence-state{border-color:rgba(255,128,111,.55)}
+.evidence-thin .evidence-state b{color:#ff806f}
+.repo-card details .breakdown{grid-template-columns:repeat(4,1fr)}
+.repo-card details .breakdown b{font-size:10px;line-height:1.45}
+.signal-row b{font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+.board-total strong{font-size:17px;letter-spacing:.04em}
+
+@media(max-width:900px){
+  .repo-main{grid-template-columns:78px 1fr 120px}
+  .signal-summary{grid-column:2/4}
+  .repo-card details .breakdown{grid-template-columns:repeat(2,1fr)}
+}
+
+@media(max-width:620px){
+  .repo-main{grid-template-columns:58px 1fr;padding:20px 16px;gap:14px}
+  .evidence-state{width:54px}
+  .signal-summary,.ready-count{grid-column:2}
+  .repo-card details .breakdown{grid-template-columns:1fr}
+}

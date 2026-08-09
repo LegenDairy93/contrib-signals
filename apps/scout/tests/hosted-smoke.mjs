@@ -47,15 +47,16 @@ assert.doesNotMatch(html, /Your site is taking shape|codex-preview/);
 const scout = await post("/api/scout", profile);
 assert.equal(scout.input.languages[0], "Python");
 assert.ok(Array.isArray(scout.opportunities));
-assert.ok(scout.opportunities.length >= 1 && scout.opportunities.length <= 6);
+assert.ok(scout.opportunities.length >= 1 && scout.opportunities.length <= 8);
 assert.ok(Date.parse(scout.generatedAt) >= startedAt - 60_000);
 
 const first = scout.opportunities[0];
 assert.match(first.id, /^[^/]+\/[^#]+#\d+$/);
 assert.match(first.issueUrl, /^https:\/\/github\.com\//);
 assert.match(first.repositoryUrl, /^https:\/\/github\.com\//);
-assert.ok(Number.isFinite(first.fitScore));
-assert.ok(Number.isFinite(first.readinessScore));
+assert.match(first.fit.level, /strong|possible|weak/);
+assert.match(first.readiness.state, /promising|investigate|pause/);
+assert.match(first.evidenceCoverage.level, /strong|partial|thin/);
 assert.ok(first.fitReasons.length + first.reasonsNotToContribute.length > 0);
 assert.ok(first.evidence.length >= 2);
 for (const evidence of first.evidence) {
@@ -75,8 +76,9 @@ console.log(JSON.stringify({
   generatedAt: scout.generatedAt,
   opportunityCount: scout.opportunities.length,
   firstOpportunity: first.id,
-  fitScore: first.fitScore,
-  readinessScore: first.readinessScore,
+  profileFit: first.fit.level,
+  contributionState: first.readiness.state,
+  evidenceCoverage: first.evidenceCoverage.level,
   evidenceLinks: first.evidence.length,
   refreshVerified: true,
 }, null, 2));

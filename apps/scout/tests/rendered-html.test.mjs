@@ -47,7 +47,7 @@ function refreshApi(body, options = {}) {
 
 
 const profile = {
-  languages: ["TypeScript"],
+  languages: ["TypeScript", "Rust"],
   skills: ["testing", "documentation"],
   interests: ["developer tools"],
   experience: "beginner",
@@ -250,7 +250,12 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
     assert.equal(item.brief.policyChecks.find((check) => check.name === "Contribution guide").status, "found");
     assert.equal(item.brief.policyChecks.find((check) => check.name === "Security policy").status, "not-found");
     assert.match(item.brief.discussion[0], /2 issue comment/);
-    assert.notEqual(item.fitScore, item.readinessScore);
+    assert.match(item.fit.level, /strong|possible|weak/);
+    assert.match(item.readiness.state, /promising|investigate|pause/);
+    assert.match(item.evidenceCoverage.level, /strong|partial|thin/);
+    assert.equal(payload.coverage.languagesSearched[0], "TypeScript");
+    assert.equal(payload.coverage.languagesSearched[1], "Rust");
+    assert.equal(payload.coverage.repositoriesInspected, 1);
     assert.equal(payload.limits.cache, "miss");
     assert.doesNotMatch(JSON.stringify(payload), /server-secret/);
     assert.ok(calls.every((call) => call.authorization === "Bearer server-secret"));

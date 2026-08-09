@@ -56,7 +56,7 @@ The production Worker tests cover:
 - explicit failure when a server credential is absent
 - live-shaped GitHub discovery with mocked authoritative responses
 - contribution-policy, duplicate-work, outside-PR, and maintainer-response evidence
-- separate fit and readiness scores
+- categorical profile fit, contribution state, and evidence coverage
 - response caching and per-client request limits
 - bounded GitHub timeouts and credential redaction
 
@@ -64,11 +64,11 @@ The production Worker tests cover:
 
 Each uncached run is bounded to:
 
-- one recent public-issue search
-- six returned issues across at most four repositories
-- 48 GitHub REST calls
+- one recent public-issue search per selected language
+- eight returned issues across at most four repositories
+- 48 GitHub REST calls across the complete bounded run
 - four concurrent GitHub calls
-- 25 seconds total evidence time
+- 55 seconds total evidence time
 - three uncached GitHub operations per client per ten-minute durable window
 - a five-minute normalized-profile cache
 
@@ -79,7 +79,7 @@ credential limit remains the final account-wide ceiling.
 
 ## Evidence boundary
 
-Scores are deterministic and explained. Issue scope and policy text come from GitHub.
+Evidence states are deterministic and explained; no synthetic 0-100 total is returned.
 Likely code areas use explicit file mentions plus lexical path matching and are labeled
 as uncertain. Pull-request statistics are a recent sample, not a complete repository
 history. No model synthesis is currently used.

@@ -4,22 +4,44 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Opportunity, ScoutInput, ScoutResponse } from "../worker/scout";
 
 const LANGUAGES = ["Python", "TypeScript", "JavaScript", "SQL", "Go", "Rust"];
-const STORAGE_KEY = "contrib-signals-worklist-v1";
+const SKILLS = ["Testing", "Documentation", "Data analysis", "Bug fixing", "APIs", "Frontend", "Backend", "DevOps", "Security"];
+const INTERESTS = ["Developer tools", "AI / LLMs", "Analytics", "Data engineering", "Automation", "OSS infrastructure", "Accessibility", "Privacy"];
+const STORAGE_KEY = "contrib-signals-worklist-v2";
 
 const DEFAULT_PROFILE: ScoutInput = {
   languages: ["Python", "TypeScript"],
-  skills: ["testing", "documentation", "data"],
-  interests: ["developer tools", "AI", "analytics"],
+  skills: ["Testing", "Documentation", "Data analysis"],
+  interests: ["Developer tools", "AI / LLMs", "Analytics"],
   experience: "beginner",
   time: "few-hours",
 };
 
-function commaList(value: string) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 5);
+function KeywordPicker({ label, options, values, onChange, placeholder }: { label: string; options: string[]; values: string[]; onChange: (values: string[]) => void; placeholder: string }) {
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+  const normalizedOptions = new Set(options.map((item) => item.toLowerCase()));
+  const customValues = values.filter((item) => !normalizedOptions.has(item.toLowerCase()));
+
+  function toggle(value: string) {
+    onChange(values.includes(value) ? values.filter((item) => item !== value) : values.length < 5 ? [...values, value] : values);
+  }
+
+  function addCustom() {
+    const value = custom.trim();
+    if (!value || values.length >= 5 || values.some((item) => item.toLowerCase() === value.toLowerCase())) return;
+    onChange([...values, value]);
+    setCustom("");
+  }
+
+  return <fieldset className="keyword-field">
+    <legend>{label} <small>choose up to 5</small></legend>
+    <div className="chip-row">
+      {options.map((option) => <button key={option} type="button" className={values.includes(option) ? "selected" : ""} aria-pressed={values.includes(option)} onClick={() => toggle(option)}>{option}</button>)}
+      {customValues.map((option) => <button key={option} type="button" className="selected custom-keyword" aria-pressed={true} onClick={() => toggle(option)}>{option} ×</button>)}
+      <button type="button" className={otherOpen ? "other selected" : "other"} aria-pressed={otherOpen} onClick={() => setOtherOpen(!otherOpen)}>Other +</button>
+    </div>
+    {otherOpen ? <div className="other-keyword"><input value={custom} onChange={(event) => setCustom(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addCustom(); } }} placeholder={placeholder} maxLength={32} aria-label={`Custom ${label.toLowerCase()} keyword`} /><button type="button" onClick={addCustom} disabled={!custom.trim() || values.length >= 5}>Add keyword</button></div> : null}
+  </fieldset>;
 }
 
 function download(name: string, text: string, type: string) {
@@ -31,22 +53,11 @@ function download(name: string, text: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-function Score({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "fit" | "ready";
-}) {
+function SignalBadge({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <div className={"score score-" + tone} aria-label={label + " " + value + " out of 100"}>
+    <div className={"signal-badge signal-" + tone}>
       <span>{label}</span>
       <strong>{value}</strong>
-      <div className="score-track" aria-hidden="true">
-        <i style={{ width: value + "%" }} />
-      </div>
     </div>
   );
 }
@@ -117,18 +128,22 @@ function OpportunityCard({
           </a>
         </h3>
         <p className="scope">{opportunity.summary}</p>
-        <div className="score-row">
-          <Score label="Your fit" value={opportunity.fitScore} tone="fit" />
-          <Score label="Ready now" value={opportunity.readinessScore} tone="ready" />
+        <div className="signal-grid" aria-label="Opportunity evidence states">
+          <SignalBadge label="Profile fit" value={opportunity.fit.level} tone={opportunity.fit.level} />
+          <SignalBadge label="Contribution state" value={opportunity.readiness.state} tone={opportunity.readiness.state} />
+          <SignalBadge label="Evidence coverage" value={opportunity.evidenceCoverage.level} tone={opportunity.evidenceCoverage.level} />
+          <SignalBadge label="Work type" value={opportunity.contributionType} tone="neutral" />
         </div>
-        {opportunity.reasonsNotToContribute.length ? (
+        {opportunity.readiness.state === "pause" || opportunity.reasonsNotToContribute.length ? (
           <div className="warning">
             <strong>Pause before coding</strong>
-            <span>{opportunity.reasonsNotToContribute[0]}</span>
+            <span>{opportunity.reasonsNotToContribute[0] ?? "The current evidence contains a blocking or negative signal."}</span>
           </div>
         ) : (
           <div className="clear-signal">
-            No blocking signal found. Still verify the maintainer rules first.
+            {opportunity.readiness.state === "promising"
+              ? "Promising evidence, not permission. Verify the maintainer rules first."
+              : "Evidence is incomplete. Investigate the cited sources before choosing this work."}
           </div>
         )}
         <div className="card-actions">
@@ -236,8 +251,8 @@ function Empty({ saved }: { saved?: boolean }) {
 
 export default function ScoutClient() {
   const [languages, setLanguages] = useState(DEFAULT_PROFILE.languages);
-  const [skills, setSkills] = useState(DEFAULT_PROFILE.skills.join(", "));
-  const [interests, setInterests] = useState(DEFAULT_PROFILE.interests.join(", "));
+  const [skills, setSkills] = useState(DEFAULT_PROFILE.skills);
+  const [interests, setInterests] = useState(DEFAULT_PROFILE.interests);
   const [experience, setExperience] = useState<ScoutInput["experience"]>("beginner");
   const [time, setTime] = useState<ScoutInput["time"]>("few-hours");
   const [result, setResult] = useState<ScoutResponse | null>(null);
@@ -246,6 +261,11 @@ export default function ScoutClient() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState("");
   const [refreshNote, setRefreshNote] = useState("");
+  const [resultSearch, setResultSearch] = useState("");
+  const [resultLanguage, setResultLanguage] = useState("");
+  const [resultType, setResultType] = useState("");
+  const [resultState, setResultState] = useState("");
+  const [resultCoverage, setResultCoverage] = useState("");
 
   useEffect(() => {
     try {
@@ -290,8 +310,8 @@ export default function ScoutClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           languages,
-          skills: commaList(skills),
-          interests: commaList(interests),
+          skills,
+          interests,
           experience,
           time,
         }),
@@ -319,8 +339,8 @@ export default function ScoutClient() {
         body: JSON.stringify({
           profile: {
             languages,
-            skills: commaList(skills),
-            interests: commaList(interests),
+            skills,
+            interests,
             experience,
             time,
           },
@@ -354,13 +374,15 @@ export default function ScoutClient() {
 
   function exportWorklist() {
     const rows = [
-      ["repository", "issue", "title", "fit_score", "readiness_score", "url"],
+      ["repository", "issue", "title", "profile_fit", "contribution_state", "evidence_coverage", "work_type", "url"],
       ...saved.map((item) => [
         item.repository,
         String(item.issueNumber),
         item.title,
-        String(item.fitScore),
-        String(item.readinessScore),
+        item.fit.level,
+        item.readiness.state,
+        item.evidenceCoverage.level,
+        item.contributionType,
         item.issueUrl,
       ]),
     ];
@@ -370,7 +392,18 @@ export default function ScoutClient() {
     download("contrib-signals-worklist.csv", csv, "text/csv");
   }
 
-  const visible = view === "saved" ? saved : result?.opportunities ?? [];
+  const visible = useMemo(() => {
+    const source = view === "saved" ? saved : result?.opportunities ?? [];
+    const query = resultSearch.trim().toLowerCase();
+    return source.filter((item) => {
+      const haystack = (item.repository + " " + item.title + " " + item.summary + " " + item.labels.join(" ")).toLowerCase();
+      return (!query || haystack.includes(query)) &&
+        (!resultLanguage || item.language === resultLanguage) &&
+        (!resultType || item.contributionType === resultType) &&
+        (!resultState || item.readiness.state === resultState) &&
+        (!resultCoverage || item.evidenceCoverage.level === resultCoverage);
+    });
+  }, [view, saved, result, resultSearch, resultLanguage, resultType, resultState, resultCoverage]);
 
   return (
     <main>
@@ -428,15 +461,9 @@ export default function ScoutClient() {
             ))}
           </div>
         </fieldset>
-        <label>
-          <span>Skills <small>comma separated</small></span>
-          <input value={skills} onChange={(event) => setSkills(event.target.value)} maxLength={180} />
-        </label>
-        <label>
-          <span>Interests <small>comma separated</small></span>
-          <input value={interests} onChange={(event) => setInterests(event.target.value)} maxLength={220} />
-        </label>
-        <label>
+        <KeywordPicker label="Skills" options={SKILLS} values={skills} onChange={setSkills} placeholder="e.g. observability" />
+        <KeywordPicker label="Interests" options={INTERESTS} values={interests} onChange={setInterests} placeholder="e.g. computer vision" />
+        <label className="profile-select">
           <span>Experience</span>
           <select value={experience} onChange={(event) => setExperience(event.target.value as ScoutInput["experience"])}>
             <option value="beginner">New contributor</option>
@@ -444,7 +471,7 @@ export default function ScoutClient() {
             <option value="advanced">Comfortable in large repos</option>
           </select>
         </label>
-        <label>
+        <label className="profile-select">
           <span>Time available</span>
           <select value={time} onChange={(event) => setTime(event.target.value as ScoutInput["time"])}>
             <option value="one-hour">About 1 hour</option>
@@ -489,6 +516,49 @@ export default function ScoutClient() {
           ) : null}
         </div>
         {refreshNote ? <p className="refresh-note" role="status">{refreshNote}</p> : null}
+        {result || saved.length ? (
+          <div className="result-filters" aria-label="Filter current evidence">
+            <label className="result-search">
+              <span>Find in results</span>
+              <input value={resultSearch} onChange={(event) => setResultSearch(event.target.value)} placeholder="Project, issue, label" />
+            </label>
+            <label>
+              <span>Language</span>
+              <select value={resultLanguage} onChange={(event) => setResultLanguage(event.target.value)}>
+                <option value="">All searched</option>
+                {LANGUAGES.map((language) => <option key={language}>{language}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Work type</span>
+              <select value={resultType} onChange={(event) => setResultType(event.target.value)}>
+                <option value="">Any type</option>
+                {['code', 'tests', 'documentation', 'design', 'triage', 'other'].map((type) => <option key={type}>{type}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Contribution state</span>
+              <select value={resultState} onChange={(event) => setResultState(event.target.value)}>
+                <option value="">Any state</option>
+                <option value="promising">Promising</option>
+                <option value="investigate">Investigate</option>
+                <option value="pause">Pause</option>
+              </select>
+            </label>
+            <label>
+              <span>Evidence coverage</span>
+              <select value={resultCoverage} onChange={(event) => setResultCoverage(event.target.value)}>
+                <option value="">Any coverage</option>
+                <option value="strong">Strong</option>
+                <option value="partial">Partial</option>
+                <option value="thin">Thin</option>
+              </select>
+            </label>
+            <button type="button" onClick={() => { setResultSearch(""); setResultLanguage(""); setResultType(""); setResultState(""); setResultCoverage(""); }}>
+              Clear filters
+            </button>
+          </div>
+        ) : null}
 
         {status === "loading" ? (
           <div className="loading-state" role="status">
@@ -524,24 +594,26 @@ export default function ScoutClient() {
         {view === "results" && result ? (
           <footer className="result-meta">
             <div>
-              <span>Collected</span>
-              <strong>{new Date(result.generatedAt).toLocaleString()}</strong>
+              <span>Languages searched</span>
+              <strong>{result.coverage.languagesSearched.join(", ") || "Targeted refresh"}</strong>
             </div>
             <div>
-              <span>GitHub requests</span>
+              <span>Candidates examined</span>
+              <strong>{result.coverage.candidatesExamined}</strong>
+            </div>
+            <div>
+              <span>Repositories inspected</span>
+              <strong>{result.coverage.repositoriesInspected} / {result.coverage.repositoryLimit}</strong>
+            </div>
+            <div>
+              <span>Evidence requests</span>
               <strong>{result.limits.githubCalls} / {result.limits.maxGithubCalls}</strong>
             </div>
-            <div>
-              <span>Evidence cache</span>
-              <strong>{result.limits.cache}</strong>
-            </div>
             <details>
-              <summary>Excluded signals {result.excluded.length}</summary>
-              {result.excluded.length ? (
-                <ul>{result.excluded.map((item) => <li key={item.url}>{item.issue}: {item.reason}</li>)}</ul>
-              ) : (
-                <p>No additional candidate reached an exclusion rule in this bounded sample.</p>
-              )}
+              <summary>Coverage limits and exclusions</summary>
+              <p>Collected {new Date(result.generatedAt).toLocaleString()}. This is a bounded search, not a complete GitHub index.</p>
+              <ul>{result.coverage.blindSpots.map((item) => <li key={item}>{item}</li>)}</ul>
+              {result.excluded.length ? <ul>{result.excluded.map((item) => <li key={item.url}>{item.issue}: {item.reason}</li>)}</ul> : null}
             </details>
           </footer>
         ) : null}
@@ -554,11 +626,11 @@ export default function ScoutClient() {
           <article>
             <b>01 / Observable</b>
             <h3>Every important claim opens its source.</h3>
-            <p>Scores expose their components, collection time, and uncertainty.</p>
+            <p>Evidence states expose their sample size, collection time, and uncertainty.</p>
           </article>
           <article>
             <b>02 / Bounded</b>
-            <h3>Six issues, not an infinite feed.</h3>
+            <h3>Coverage is visible, not implied.</h3>
             <p>The goal is to pick work you can finish—not browse another leaderboard.</p>
           </article>
           <article>
@@ -573,7 +645,7 @@ export default function ScoutClient() {
         <strong>CONTRIB SIGNALS</strong>
         <p>Built for careful contributors, not contribution volume.</p>
         <a href="https://github.com/LegenDairy93/contrib-signals" target="_blank" rel="noreferrer">
-          Read the scoring code ↗
+          Read the evidence code ↗
         </a>
       </footer>
     </main>

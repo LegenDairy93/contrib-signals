@@ -32,15 +32,15 @@
           <a class="button primary" href="#repositories">Explore the snapshot &darr;</a>
           <a class="button quiet" href="./data/opportunities.csv" download>Download CSV</a>
         </div>
-        <p class="disclaimer">A high score is evidence to investigate, not maintainer consent.</p>
+        <p class="disclaimer">This is a dated, bounded evidence sample—not a complete project index or maintainer recommendation.</p>
       </div>
       <div class="signal-board" aria-hidden="true">
         <div class="board-head"><span>PUBLIC GITHUB EVIDENCE</span><span>SQL / SNAPSHOT 01</span></div>
-        <div class="signal-row"><span>Repository activity</span><i style="--value:85%"></i><b>25</b></div>
-        <div class="signal-row"><span>Outside PR merge rate</span><i style="--value:72%"></i><b>30</b></div>
-        <div class="signal-row"><span>Contribution docs</span><i style="--value:58%"></i><b>15</b></div>
-        <div class="signal-row"><span>Ready opportunities</span><i style="--value:66%"></i><b>30</b></div>
-        <div class="board-total"><span>Inspectable score</span><strong>100</strong></div>
+        <div class="signal-row"><span>Repository activity</span><i style="--value:85%"></i><b>Observed</b></div>
+        <div class="signal-row"><span>Outside PRs</span><i style="--value:72%"></i><b>Sampled</b></div>
+        <div class="signal-row"><span>Contribution docs</span><i style="--value:58%"></i><b>Checked</b></div>
+        <div class="signal-row"><span>Labelled opportunities</span><i style="--value:66%"></i><b>Bounded</b></div>
+        <div class="board-total"><span>Unknown stays unknown</span><strong>NO TOTAL</strong></div>
       </div>
     </section>
 
@@ -48,7 +48,7 @@
       <div class="shell snapshot-stats" id="snapshot-stats" aria-live="polite">
         <div><strong>--</strong><span>repositories</span></div>
         <div><strong>--</strong><span>languages</span></div>
-        <div><strong>--</strong><span>ready issues</span></div>
+        <div><strong>--</strong><span>labelled issues</span></div>
         <div><strong>--</strong><span>evidence collected</span></div>
       </div>
     </section>
@@ -56,15 +56,15 @@
     <section class="explorer shell" id="repositories">
       <div class="section-intro">
         <div><p class="eyebrow"><span></span> Repository explorer</p><h2>Inspect the reason,<br>not just the rank.</h2></div>
-        <p>Every score expands into its components. Filter the snapshot, then check the source repository and contribution policy before starting work.</p>
+        <p>Filter raw evidence without pretending activity, documentation, and a small PR sample add up to project quality.</p>
       </div>
 
       <form class="controls" id="controls" aria-label="Filter repositories">
         <label class="search-field"><span>Search</span><input id="search" type="search" placeholder="Repository or description"></label>
         <label><span>Language</span><select id="language"><option value="">All languages</option></select></label>
-        <label><span>Minimum score <output id="score-output">0</output></span><input id="min-score" type="range" min="0" max="100" step="5" value="0"></label>
-        <label><span>Sort</span><select id="sort"><option value="score">Strongest evidence</option><option value="merge">Outside merge rate</option><option value="activity">Most recently active</option><option value="stars">Most stars</option></select></label>
-        <label class="check"><input id="ready-only" type="checkbox"><span>Has a ready issue</span></label>
+        <label><span>Evidence coverage</span><select id="coverage"><option value="">Any coverage</option><option value="strong">Strong</option><option value="partial">Partial</option><option value="thin">Thin</option></select></label>
+        <label><span>Sort</span><select id="sort"><option value="activity">Most recently active</option><option value="merge">Outside merge rate</option><option value="sample">Largest PR sample</option><option value="stars">Most stars</option><option value="name">Repository name</option></select></label>
+        <label class="check"><input id="opportunities-only" type="checkbox"><span>Has a labelled opportunity</span></label>
       </form>
 
       <div class="result-head"><p id="result-count">Loading snapshot...</p><button id="reset" type="button">Reset filters</button></div>
@@ -75,7 +75,7 @@
       <div class="shell">
         <div class="section-intro compact">
           <div><p class="eyebrow"><span></span> Issue evidence</p><h2>Current opportunities.</h2></div>
-          <p>Issue readiness considers assignment, freshness, maintainer authorship, discussion level and explicit beginner labels.</p>
+          <p>These are labelled, unassigned issue candidates from the recorded sample. No combined readiness score is asserted.</p>
         </div>
         <div id="opportunity-list" class="opportunity-list"></div>
       </div>
@@ -85,13 +85,13 @@
       <div class="method-copy">
         <p class="eyebrow"><span></span> Methodology</p>
         <h2>Readable SQL.<br>Fixed evidence time.</h2>
-        <p>Scores are anchored to each repository's collection timestamp, so opening the same snapshot tomorrow does not silently change its ranking.</p>
-        <a href="https://github.com/LegenDairy93/contrib-signals/blob/main/sql/schema.sql">Inspect the scoring SQL &nearr;</a>
+        <p>Every state is anchored to its collection timestamp. Missing evidence is shown as unknown rather than converted into a zero.</p>
+        <a href="https://github.com/LegenDairy93/contrib-signals/blob/main/sql/schema.sql">Inspect the evidence schema &nearr;</a>
       </div>
       <ol class="method-steps">
         <li><span>01</span><div><b>Collect</b><p>Public metadata, recent outside PRs, contribution files and labelled issues.</p></div></li>
         <li><span>02</span><div><b>Store</b><p>Raw evidence in SQLite with collection timestamps and source links.</p></div></li>
-        <li><span>03</span><div><b>Score</b><p>Transparent component weights in SQL views, not an opaque model judgment.</p></div></li>
+        <li><span>03</span><div><b>Classify</b><p>Expose observed, missing, and unknown evidence without a synthetic total.</p></div></li>
         <li><span>04</span><div><b>Investigate</b><p>Use the result as a shortlist; read policies and coordinate with maintainers.</p></div></li>
       </ol>
     </section>
@@ -100,6 +100,6 @@
   <footer>
     <div class="shell footer-row"><span>Contrib Signals / Devaanga Prakash</span><span id="footer-date">Reproducible public snapshot</span></div>
   </footer>
-  <script type="module" src="app.js"></script>
+  <script type="module" src="evidence.js"></script>
 </body>
 </html>

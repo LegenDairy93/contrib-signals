@@ -3,7 +3,7 @@ import { consumeQuota, type QuotaDatabase } from "./quota";
 const API = "https://api.github.com";
 const MAX_CALLS = 48;
 const CACHE_MS = 300_000;
-const MAX_RESULTS = 6;
+const MAX_RESULTS = 8;
 const MAX_REPOS = 4;
 
 export type ScoutInput = {
@@ -81,8 +81,28 @@ export type Opportunity = {
   language: string;
   labels: string[];
   updatedAt: string;
-  fitScore: number;
-  readinessScore: number;
+  contributionType: "code" | "tests" | "documentation" | "design" | "triage" | "other";
+  fit: {
+    level: "strong" | "possible" | "weak";
+    languageMatch: boolean;
+    skillMatches: string[];
+    interestMatches: string[];
+    experienceMatch: "supported" | "uncertain" | "stretch";
+    timeMatch: "plausible" | "uncertain" | "unlikely";
+  };
+  readiness: {
+    state: "promising" | "investigate" | "pause";
+    activity: "recent" | "aging" | "stale";
+    outsiderEvidence: "positive" | "mixed" | "negative" | "unknown";
+    contributionGuide: "found" | "not-found";
+    competingWork: "found" | "not-found";
+  };
+  evidenceCoverage: {
+    level: "strong" | "partial" | "thin";
+    checksObserved: number;
+    checksPossible: number;
+    outsidePullSample: number;
+  };
   fitReasons: string[];
   readinessReasons: string[];
   reasonsNotToContribute: string[];
@@ -113,9 +133,20 @@ export type Opportunity = {
 export type ScoutResponse = {
   generatedAt: string;
   query: string;
+  queries: string[];
   input: ScoutInput;
   opportunities: Opportunity[];
   excluded: Array<{ issue: string; url: string; reason: string }>;
+  coverage: {
+    languagesRequested: string[];
+    languagesSearched: string[];
+    candidatesExamined: number;
+    repositoriesInspected: number;
+    repositoryLimit: number;
+    resultLimit: number;
+    labelFamilies: string[];
+    blindSpots: string[];
+  };
   limits: { githubCalls: number; maxGithubCalls: number; cache: "hit" | "miss" };
   notice: string;
 };
@@ -135,6 +166,17 @@ type RepoEvidence = {
 
 const cache = new Map<string, { expires: number; value: ScoutResponse }>();
 
+function usableGitHubToken(value?: string) {
+  const token = value?.trim();
+  if (!token || /replace_me|your_(?:github_)?token/i.test(token)) return undefined;
+  return token;
+}
+
+function localPreviewHost(request: Request) {
+  return ["localhost", "127.0.0.1", "::1"].includes(new URL(request.url).hostname);
+}
+
+
 export class ScoutError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -142,7 +184,6 @@ export class ScoutError extends Error {
 }
 
 const unique = <T,>(values: T[]) => [...new Set(values)];
-const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const safeText = (value: unknown, max: number) =>
   typeof value === "string"
     ? value.trim().replace(/\p{Cc}/gu, " ").slice(0, max)
@@ -273,7 +314,7 @@ class GitHub {
   calls = 0;
   private active = 0;
   private waiters: Array<() => void> = [];
-  private deadline = Date.now() + 25_000;
+  private deadline = Date.now() + 55_000;
 
   constructor(private token?: string) {}
 
@@ -303,15 +344,17 @@ class GitHub {
       if (this.token) headers.Authorization = "Bearer " + this.token;
       const remaining = this.deadline - Date.now();
       if (remaining <= 0) {
+        if (optional) return null;
         throw new ScoutError(504, "The bounded GitHub evidence window expired.");
       }
       let response: Response;
       try {
         response = await fetch(url, {
           headers,
-          signal: AbortSignal.timeout(Math.min(12_000, remaining)),
+          signal: AbortSignal.timeout(Math.min(20_000, remaining)),
         });
       } catch {
+        if (optional) return null;
         throw new ScoutError(504, "GitHub did not respond within the evidence timeout.");
       }
       if (optional && response.status === 404) return null;
@@ -324,7 +367,12 @@ class GitHub {
       if (!response.ok) {
         throw new ScoutError(502, "GitHub evidence request failed (" + response.status + ").");
       }
-      return (await response.json()) as T;
+      try {
+        return (await response.json()) as T;
+      } catch {
+        if (optional) return null;
+        throw new ScoutError(504, "GitHub returned an incomplete response before the evidence timeout.");
+      }
     } finally {
       release();
     }
@@ -358,10 +406,10 @@ async function collectRepo(
   if (!repo) throw new ScoutError(502, "Repository evidence was unavailable.");
   const [community, pulls, rootSecurity, tree] = await Promise.all([
     github.get<Community>("/repos/" + encoded + "/community/profile", true),
-    github.get<Pull[]>("/repos/" + encoded + "/pulls?state=all&sort=updated&direction=desc&per_page=20"),
+    github.get<Pull[]>("/repos/" + encoded + "/pulls?state=all&sort=updated&direction=desc&per_page=20", true),
     github.get<Content>("/repos/" + encoded + "/contents/SECURITY.md", true),
     github.get<Tree>(
-      "/repos/" + encoded + "/git/trees/" + encodeURIComponent(repo.default_branch) + "?recursive=1",
+      "/repos/" + encoded + "/git/trees/" + encodeURIComponent(repo.default_branch),
       true,
     ),
   ]);
@@ -510,19 +558,37 @@ function buildOpportunity(
     haystack.includes(item.toLowerCase()),
   );
   const complexity = tokens(issue.body ?? "").length;
-  const timePenalty =
-    input.time === "one-hour" && complexity > 220
-      ? 14
-      : input.time === "few-hours" && complexity > 500
-        ? 8
-        : 0;
-  const fitScore = clamp(
-    42 +
-      (languageMatch ? 28 : 0) +
-      Math.min(15, skillMatches.length * 5) +
-      Math.min(15, interestMatches.length * 5) -
-      timePenalty,
+  const beginnerSignal = labels.some((label) =>
+    /good first|beginner|starter|easy/i.test(label),
   );
+  const experienceMatch: Opportunity["fit"]["experienceMatch"] =
+    input.experience === "advanced"
+      ? "supported"
+      : beginnerSignal
+        ? "supported"
+        : input.experience === "intermediate"
+          ? "uncertain"
+          : "stretch";
+  const timeMatch: Opportunity["fit"]["timeMatch"] =
+    input.time === "one-hour"
+      ? complexity <= 120 ? "plausible" : complexity <= 260 ? "uncertain" : "unlikely"
+      : input.time === "few-hours"
+        ? complexity <= 350 ? "plausible" : complexity <= 650 ? "uncertain" : "unlikely"
+        : complexity <= 900 ? "plausible" : "uncertain";
+  const profileMatches = skillMatches.length + interestMatches.length;
+  const fitLevel: Opportunity["fit"]["level"] =
+    languageMatch && profileMatches > 0 && experienceMatch !== "stretch" && timeMatch !== "unlikely"
+      ? "strong"
+      : languageMatch && timeMatch !== "unlikely"
+        ? "possible"
+        : "weak";
+  const typeText = issue.title + " " + (issue.body ?? "") + " " + labels.join(" ");
+  const contributionType: Opportunity["contributionType"] =
+    /docs?|documentation|readme|guide/i.test(typeText) ? "documentation"
+      : /test|testing|coverage|fixture/i.test(typeText) ? "tests"
+        : /design|ux|ui|accessibility|a11y/i.test(typeText) ? "design"
+          : /triage|reproduce|investigate/i.test(typeText) ? "triage"
+            : /fix|bug|feature|implement|refactor|code|api/i.test(typeText) ? "code" : "other";
 
   const relatedIssues = candidateIssues
     .filter((candidate) =>
@@ -549,16 +615,39 @@ function buildOpportunity(
   const templatesPresent = Boolean(
     evidence.community?.files?.issue_template?.html_url,
   );
-  let readinessScore = 34;
-  readinessScore += issueAge <= 14 ? 16 : issueAge <= 45 ? 8 : -15;
-  readinessScore += repoAge <= 14 ? 14 : repoAge <= 45 ? 7 : -20;
-  readinessScore += contributionPresent ? 12 : -10;
-  readinessScore += templatesPresent ? 5 : 0;
-  readinessScore += external.length
-    ? Math.round((merged.length / external.length) * 16)
-    : -4;
-  readinessScore += evidence.maintainerResponses ? 8 : 0;
-  readinessScore -= duplicates.some((item) => item.state === "open") ? 20 : 0;
+  const competingWork = duplicates.some((item) => item.state === "open");
+  const activity: Opportunity["readiness"]["activity"] =
+    issueAge <= 14 && repoAge <= 14 ? "recent" : issueAge <= 45 && repoAge <= 45 ? "aging" : "stale";
+  const outsiderEvidence: Opportunity["readiness"]["outsiderEvidence"] =
+    external.length === 0
+      ? "unknown"
+      : external.length < 3
+        ? "mixed"
+        : merged.length === 0
+          ? "negative"
+          : merged.length / external.length >= 0.5
+            ? "positive"
+            : "mixed";
+  const foundCommands = commands(evidence.readme + "\n" + evidence.contribution);
+  const foundRules = rules(evidence.contribution);
+  const checks = [
+    issueAge <= 45,
+    repoAge <= 45,
+    Boolean(evidence.community),
+    contributionPresent,
+    external.length > 0,
+    foundCommands.setup.length > 0,
+    foundCommands.tests.length > 0,
+  ];
+  const checksObserved = checks.filter(Boolean).length;
+  const coverageLevel: Opportunity["evidenceCoverage"]["level"] =
+    checksObserved >= 6 && external.length >= 5 ? "strong" : checksObserved >= 3 ? "partial" : "thin";
+  const readinessState: Opportunity["readiness"]["state"] =
+    competingWork || issue.locked || activity === "stale" || outsiderEvidence === "negative"
+      ? "pause"
+      : contributionPresent && activity === "recent" && coverageLevel !== "thin"
+        ? "promising"
+        : "investigate";
 
   const fitReasons = [
     languageMatch
@@ -570,9 +659,12 @@ function buildOpportunity(
     interestMatches.length
       ? "Matched interests: " + interestMatches.join(", ") + "."
       : "No exact interest keyword match was found.",
-    timePenalty
-      ? "The written scope may exceed your selected time budget."
-      : "The written scope is not obviously larger than your time budget.",
+    experienceMatch === "supported"
+      ? "The issue carries an entry signal compatible with your selected experience."
+      : experienceMatch === "stretch"
+        ? "No beginner-oriented entry signal was found for your selected experience."
+        : "Experience fit is uncertain from the available labels.",
+    "Time fit is " + timeMatch + "; this is inferred from written scope only, not a duration promise.",
   ];
   const readinessReasons = [
     "Issue updated " +
@@ -593,7 +685,7 @@ function buildOpportunity(
       " sampled outside pull requests had a maintainer comment.",
   ];
   const reasonsNotToContribute: string[] = [];
-  if (duplicates.some((item) => item.state === "open")) {
+  if (competingWork) {
     reasonsNotToContribute.push(
       "A similar open pull request may already be in progress.",
     );
@@ -618,8 +710,6 @@ function buildOpportunity(
       : "Code-area hints are lexical, not a code-understanding claim.",
     "Pull-request evidence is a recent sample, not the repository complete history.",
   ];
-  const foundCommands = commands(evidence.readme + "\n" + evidence.contribution);
-  const foundRules = rules(evidence.contribution);
   const issueEvidence: Evidence = {
     label: "Issue #" + issue.number,
     url: issue.html_url,
@@ -638,8 +728,28 @@ function buildOpportunity(
     language,
     labels,
     updatedAt: issue.updated_at,
-    fitScore,
-    readinessScore: clamp(readinessScore),
+    contributionType,
+    fit: {
+      level: fitLevel,
+      languageMatch,
+      skillMatches,
+      interestMatches,
+      experienceMatch,
+      timeMatch,
+    },
+    readiness: {
+      state: readinessState,
+      activity,
+      outsiderEvidence,
+      contributionGuide: contributionPresent ? "found" : "not-found",
+      competingWork: competingWork ? "found" : "not-found",
+    },
+    evidenceCoverage: {
+      level: coverageLevel,
+      checksObserved,
+      checksPossible: checks.length,
+      outsidePullSample: external.length,
+    },
     fitReasons,
     readinessReasons,
     reasonsNotToContribute,
@@ -703,39 +813,44 @@ function buildOpportunity(
   };
 }
 
-function makeQuery(input: ScoutInput, now: Date) {
+function makeQueries(input: ScoutInput, now: Date) {
   const cutoff = new Date(now.getTime() - 60 * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  const language = input.languages[0].replace(/["\\]/g, "");
-  return (
+  return input.languages.map((selectedLanguage) =>
     "is:issue is:open is:public archived:false no:assignee -linked:pr " +
-    "updated:>=" +
-    cutoff +
-    ' label:"good first issue","help wanted" language:"' +
-    language +
-    '"'
+      "updated:>=" + cutoff +
+      ' label:"good first issue","help wanted","beginner","starter" language:"' +
+      selectedLanguage.replace(/["\\]/g, "") + '"',
   );
 }
 
 export async function runScout(
   input: ScoutInput,
-  token?: string,
+  token: string,
 ): Promise<ScoutResponse> {
   const now = new Date();
   const generatedAt = now.toISOString();
-  const query = makeQuery(input, now);
+  const queries = makeQueries(input, now);
   const github = new GitHub(token);
-  const search = await github.get<{ items?: Issue[] }>(
-    "/search/issues?q=" +
-      encodeURIComponent(query) +
-      "&sort=updated&order=desc&per_page=30",
+  const pages = await mapLimit(queries, 3, (query) =>
+    github.get<{ items?: Issue[] }>(
+      "/search/issues?q=" + encodeURIComponent(query) + "&sort=updated&order=desc&per_page=20",
+    ),
   );
-  const candidates = (search?.items ?? [])
-    .filter((item) => !item.pull_request)
-    .slice(0, 24);
+  const candidates: Issue[] = [];
+  const seenCandidates = new Set<string>();
+  const longestPage = Math.max(0, ...pages.map((page) => page?.items?.length ?? 0));
+  for (let index = 0; index < longestPage; index += 1) {
+    for (const page of pages) {
+      const issue = page?.items?.[index];
+      if (!issue || issue.pull_request || seenCandidates.has(issue.html_url)) continue;
+      seenCandidates.add(issue.html_url);
+      candidates.push(issue);
+    }
+  }
   const excluded: ScoutResponse["excluded"] = [];
-  const selected: Issue[] = [];
+  const eligible: Issue[] = [];
   const repos = new Set<string>();
 
   for (const issue of candidates) {
@@ -757,10 +872,21 @@ export async function runScout(
       });
       continue;
     }
-    if (!repos.has(repo) && repos.size >= MAX_REPOS) continue;
+    eligible.push(issue);
+  }
+
+  const selected: Issue[] = [];
+  for (const issue of eligible) {
+    const repo = repoFromUrl(issue.repository_url);
+    if (!repo || repos.has(repo) || repos.size >= MAX_REPOS) continue;
     repos.add(repo);
     selected.push(issue);
+  }
+  for (const issue of eligible) {
     if (selected.length >= MAX_RESULTS) break;
+    const repo = repoFromUrl(issue.repository_url);
+    if (!repos.has(repo) || selected.some((item) => item.html_url === issue.html_url)) continue;
+    selected.push(issue);
   }
 
   const pairs = await mapLimit([...repos], 2, async (name) => {
@@ -793,18 +919,37 @@ export async function runScout(
     opportunities.push(buildOpportunity(issue, evidence, input, now, candidates));
   }
 
+  const fitOrder = { strong: 0, possible: 1, weak: 2 } as const;
+  const readinessOrder = { promising: 0, investigate: 1, pause: 2 } as const;
+  const coverageOrder = { strong: 0, partial: 1, thin: 2 } as const;
   opportunities.sort(
     (left, right) =>
-      right.fitScore +
-      right.readinessScore -
-      (left.fitScore + left.readinessScore),
+      readinessOrder[left.readiness.state] - readinessOrder[right.readiness.state] ||
+      fitOrder[left.fit.level] - fitOrder[right.fit.level] ||
+      coverageOrder[left.evidenceCoverage.level] - coverageOrder[right.evidenceCoverage.level] ||
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
   return {
     generatedAt,
-    query,
+    query: queries.join(" | "),
+    queries,
     input,
     opportunities,
     excluded: excluded.slice(0, 12),
+    coverage: {
+      languagesRequested: input.languages,
+      languagesSearched: input.languages,
+      candidatesExamined: candidates.length,
+      repositoriesInspected: repos.size,
+      repositoryLimit: MAX_REPOS,
+      resultLimit: MAX_RESULTS,
+      labelFamilies: ["good first issue", "help wanted", "beginner", "starter"],
+      blindSpots: [
+        "Projects without searchable GitHub issue labels are outside this run.",
+        "External trackers and repository-specific difficulty taxonomies are not indexed yet.",
+        "Only a recent pull-request sample is inspected for outsider evidence.",
+      ],
+    },
     limits: {
       githubCalls: github.calls,
       maxGithubCalls: MAX_CALLS,
@@ -847,7 +992,7 @@ function validateRefresh(raw: unknown): { profile: ScoutInput; items: RefreshIte
     .filter((item): item is RefreshItem => Boolean(item));
   if (!items.length) throw new ScoutError(400, "Choose at least one saved issue.");
   if (items.length > MAX_RESULTS || new Set(items.map((item) => item.repository)).size > MAX_REPOS) {
-    throw new ScoutError(400, "Refresh at most six issues across four repositories.");
+    throw new ScoutError(400, "Refresh at most eight issues across four repositories.");
   }
   return {
     profile,
@@ -909,9 +1054,23 @@ async function runRefresh(
   return {
     generatedAt,
     query: "Targeted refresh of " + items.length + " saved issue(s).",
+    queries: ["Targeted refresh of " + items.length + " saved issue(s)."],
     input: profile,
     opportunities,
     excluded,
+    coverage: {
+      languagesRequested: profile.languages,
+      languagesSearched: [],
+      candidatesExamined: validIssues.length,
+      repositoriesInspected: repositories.length,
+      repositoryLimit: MAX_REPOS,
+      resultLimit: MAX_RESULTS,
+      labelFamilies: [],
+      blindSpots: [
+        "A targeted refresh rechecks saved issues; it does not search for new projects.",
+        "Only a recent pull-request sample is inspected for outsider evidence.",
+      ],
+    },
     limits: {
       githubCalls: github.calls,
       maxGithubCalls: MAX_CALLS,
@@ -952,7 +1111,8 @@ export async function handleRefreshRequest(
       ":" +
       items.map((item) => item.repository + "#" + item.issueNumber).sort().join(",");
     const now = Date.now();
-    if (!env?.GITHUB_TOKEN) {
+    const githubToken = usableGitHubToken(env?.GITHUB_TOKEN);
+    if (!githubToken) {
       return json(
         { error: "Live GitHub discovery is not configured on this deployment." },
         503,
@@ -970,7 +1130,7 @@ export async function handleRefreshRequest(
     }
     let wait: number;
     try {
-      wait = await consumeQuota(env.DB, clientKey(request), env.GITHUB_TOKEN, now);
+      wait = await consumeQuota(env.DB, clientKey(request), githubToken, now);
     } catch {
       return json(
         { error: "Live GitHub discovery is unavailable because quota protection could not be verified." },
@@ -984,7 +1144,7 @@ export async function handleRefreshRequest(
         { "retry-after": String(wait) },
       );
     }
-    const value = await runRefresh(profile, items, env.GITHUB_TOKEN);
+    const value = await runRefresh(profile, items, githubToken);
     cache.set(key, { value, expires: now + CACHE_MS });
     return json(value);
   } catch (error) {
@@ -1057,7 +1217,8 @@ export async function handleScoutRequest(
     const input = validateInput(raw);
     const key = normalized(input);
     const now = Date.now();
-    if (!env?.GITHUB_TOKEN) {
+    const githubToken = usableGitHubToken(env?.GITHUB_TOKEN);
+    if (!githubToken) {
       return json(
         { error: "Live GitHub discovery is not configured on this deployment." },
         503,
@@ -1078,7 +1239,7 @@ export async function handleScoutRequest(
     }
     let wait: number;
     try {
-      wait = await consumeQuota(env.DB, clientKey(request), env.GITHUB_TOKEN, now);
+      wait = await consumeQuota(env.DB, clientKey(request), githubToken, now);
     } catch {
       return json(
         { error: "Live GitHub discovery is unavailable because quota protection could not be verified." },
@@ -1095,13 +1256,19 @@ export async function handleScoutRequest(
         { "retry-after": String(wait) },
       );
     }
-    const value = await runScout(input, env.GITHUB_TOKEN);
+    const value = await runScout(input, githubToken);
     cache.set(key, { value, expires: now + CACHE_MS });
     return json(value);
   } catch (error) {
     if (error instanceof ScoutError) {
       return json({ error: error.message }, error.status);
     }
-    return json({ error: "The scout could not complete this run." }, 500);
+    const detail = error instanceof Error
+      ? error.message.replace(/(?:github_pat_|ghp_)[A-Za-z0-9_]+/g, "[REDACTED]").slice(0, 180)
+      : "Unknown local error";
+    return json(
+      { error: localPreviewHost(request) ? "Local scout failed: " + detail : "The scout could not complete this run." },
+      500,
+    );
   }
 }

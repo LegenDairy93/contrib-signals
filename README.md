@@ -8,8 +8,8 @@ important signal links back to GitHub evidence.
 
 ## Hosted scout
 
-The full-stack app in apps/scout turns a small contribution profile into at most six
-current opportunities, separate fit and readiness scores, a cited investigation brief,
+The full-stack app in apps/scout turns a small contribution profile into at most eight
+current opportunities, categorical evidence states, visible coverage, a cited investigation brief,
 policy checks, duplicate-work warnings, and a refreshable local worklist.
 
 Its production build, deterministic API tests, and one real GitHub smoke run pass.
@@ -24,12 +24,38 @@ docs/ACCEPTANCE.md pass.
 The GitHub credential stays server-side. The scout never claims issues, posts comments,
 generates unsolicited patches, pushes branches, or opens pull requests.
 
+## Product direction
+
+Contrib Signals is the active product. Its long-term object is:
+
+> Find worthwhile open-source work, contribute responsibly, and build a verified
+> public record of what you accomplished.
+
+The current release is the **Scout**: live discovery, cited evidence, readiness checks,
+and a saved investigation worklist. The next product loop is deliberately outcome-led:
+
+1. **Journey** - move an opportunity through investigating, maintainer contact,
+   planning, work, pull request, review, and a final merged, declined, or abandoned
+   outcome.
+2. **Contribution Cards** - turn completed journeys into compact, shareable records
+   backed by issue, pull-request, review, and merge evidence.
+3. **Personal progress** - use predeclared quest points and private milestones to make
+   sustained contribution enjoyable without pretending points measure engineering
+   quality.
+4. **Constrained boards** - only after verified journeys exist, test small seasonal or
+   community boards with explicit rules and abuse resistance.
+
+The ranking layer is not the product. Contrib Signals will not reward lines changed,
+commit counts, comments, pull requests opened, self-owned repositories, or AI-estimated
+quality. The valuable loop is discovery -> investigation -> attempt -> outcome -> verified
+record -> better future recommendations.
+
 ## Evidence dataset and static snapshot
 
 **[Explore the dated public snapshot](https://legendairy93.github.io/contrib-signals/)**
 
 The Python and SQLite surface remains useful for reproducible research, scheduled
-datasets, and auditing the scoring logic. The public snapshot is dated evidence, not a
+datasets, and auditing the evidence logic. The public snapshot is dated evidence, not a
 live recommendation service.
 
 ## What it measures
@@ -41,8 +67,8 @@ live recommendation service.
 - whether an issue is unassigned, recently updated, and maintainer-authored
 - the exact collection timestamp behind every result
 
-The score is deliberately transparent. Read [`sql/schema.sql`](sql/schema.sql) to see
-every weight and threshold.
+Raw observations remain queryable in SQLite. Missing evidence and negative evidence
+are kept separate; the public product no longer presents a synthetic total.
 
 ## Quick start
 
@@ -66,8 +92,8 @@ limit applies.
 ## Browser dashboard
 
 The static dashboard in `web/` reads a committed JSON snapshot, so it needs no API key,
-server, or database at view time. Repository cards expose every score component, filters
-operate entirely in the browser, and the matching issue evidence is downloadable as CSV.
+server, or database at view time. Cards expose activity, PR sample size, documentation,
+labelled opportunities, and evidence coverage without a combined score.
 
 Create or refresh both browser artifacts from any collected database:
 
@@ -79,35 +105,26 @@ python -m contrib_signals snapshot \
 ```
 
 Snapshot age calculations are anchored to each repository's `collected_at` value. The
-same evidence therefore keeps the same score when reopened later.
+same evidence therefore keeps the same classification when reopened later.
 
 ## Example SQL
 
 ```sql
-SELECT
-  full_name,
-  language,
-  contribution_score,
-  ready_issues,
-  ROUND(external_merge_rate * 100, 1) AS external_merge_pct
-FROM repository_scores
-WHERE ready_issues > 0
-ORDER BY contribution_score DESC;
+SELECT full_name, language, pushed_at,
+       external_prs_merged, external_prs_sampled,
+       has_contributing, collected_at
+FROM repositories
+ORDER BY pushed_at DESC, full_name;
 ```
 
 Issue-level investigation:
 
 ```sql
-SELECT
-  repository,
-  number,
-  title,
-  readiness_score,
-  maintainer_opened,
-  days_since_update,
-  html_url
-FROM opportunity_scores
-ORDER BY readiness_score DESC, repository, number;
+SELECT repository, number, title, labels,
+       assignee_count, maintainer_opened,
+       updated_at, html_url
+FROM issues
+ORDER BY updated_at DESC, repository, number;
 ```
 
 ## Data model
@@ -123,7 +140,7 @@ be published as a release asset without committing personal tokens or an ever-gr
 
 ## Important limitation
 
-A high score is not maintainer consent. Before coding, read the repository's contribution
+Promising evidence is not maintainer consent. Before coding, read the repository's contribution
 and AI-assistance policies, check for competing work, and ask the maintainer when scope is
 unclear. The purpose of this project is to reduce wasted investigation—not automate drive-by
 contributions.
