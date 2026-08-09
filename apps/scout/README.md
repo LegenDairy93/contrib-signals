@@ -16,8 +16,8 @@ branch, or opens a pull request.
 The production build and mocked end-to-end API tests pass locally. A clean Node checkout
 also completed `npm ci`, lint, the production build, and all five Worker tests. One
 unauthenticated GitHub smoke run on 2026-08-09 returned five current Python opportunities
-in 29 REST requests. The app is not described as publicly live until the hosted secret,
-durable quota, and fresh-user gates in ../../docs/ACCEPTANCE.md pass.
+in 29 REST requests. The app is not described as publicly live until the hosted secret
+and fresh-user gates in ../../docs/ACCEPTANCE.md pass.
 
 ## Run locally
 
@@ -60,11 +60,13 @@ Each uncached run is bounded to:
 - 48 GitHub REST calls
 - four concurrent GitHub calls
 - 25 seconds total evidence time
-- three uncached scout profiles per client per ten-minute Worker-isolate window
+- three uncached GitHub operations per client per ten-minute durable window
 - a five-minute normalized-profile cache
 
-The in-memory rate window is a first deployment guard, not a globally durable quota.
-A public deployment still requires the quota-risk gate in the acceptance document.
+The quota ledger is stored in Sites-managed D1 and enforced atomically across Worker
+instances. It stores a salted SHA-256 client identifier rather than a raw IP address,
+cleans expired windows, and fails closed if D1 is unavailable. The GitHub provider's own
+credential limit remains the final account-wide ceiling.
 
 ## Evidence boundary
 
@@ -72,3 +74,12 @@ Scores are deterministic and explained. Issue scope and policy text come from Gi
 Likely code areas use explicit file mentions plus lexical path matching and are labeled
 as uncertain. Pull-request statistics are a recent sample, not a complete repository
 history. No model synthesis is currently used.
+
+## Dependency audit boundary
+
+`npm audit --omit=dev` reports zero production dependency vulnerabilities. The full
+development tree reports two high advisories in vinext's transitive image-size 2.0.2
+dependency. npm has no patched image-size release as of 2026-08-09. This app accepts no
+image upload or remote image input, and the affected ICNS/JXL/HEIF parser identifiers are
+absent from the deployed JavaScript bundle. Do not describe the full tree as audit-clean
+until vinext can consume a patched release.

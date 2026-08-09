@@ -13,11 +13,11 @@ current opportunities, separate fit and readiness scores, a cited investigation 
 policy checks, duplicate-work warnings, and a refreshable local worklist.
 
 Its production build, deterministic API tests, and one real GitHub smoke run pass.
-It is not advertised as publicly live until the hosted secret, quota, responsive, and
-fresh-user gates in docs/ACCEPTANCE.md pass.
+It is not advertised as publicly live until the hosted secret and fresh-user gates in
+docs/ACCEPTANCE.md pass.
 
     cd apps/scout
-    npm install
+    npm ci
     Copy-Item .dev.vars.example .dev.vars
     npm run dev
 

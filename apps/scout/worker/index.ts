@@ -6,6 +6,7 @@ import { handleRefreshRequest, handleScoutRequest } from "./scout";
 interface Env {
   ASSETS: Fetcher;
   GITHUB_TOKEN?: string;
+  DB: D1Database;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {

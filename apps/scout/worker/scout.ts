@@ -1,8 +1,8 @@
+import { consumeQuota, type QuotaDatabase } from "./quota";
+
 const API = "https://api.github.com";
 const MAX_CALLS = 48;
 const CACHE_MS = 300_000;
-const RATE_MS = 600_000;
-const RATE_MAX = 3;
 const MAX_RESULTS = 6;
 const MAX_REPOS = 4;
 
@@ -120,7 +120,7 @@ export type ScoutResponse = {
   notice: string;
 };
 
-type EnvLike = { GITHUB_TOKEN?: string };
+type EnvLike = { GITHUB_TOKEN?: string; DB?: QuotaDatabase };
 type RepoEvidence = {
   repo: Repo;
   community: Community | null;
@@ -134,7 +134,6 @@ type RepoEvidence = {
 };
 
 const cache = new Map<string, { expires: number; value: ScoutResponse }>();
-const requests = new Map<string, number[]>();
 
 export class ScoutError extends Error {
   constructor(public status: number, message: string) {
@@ -953,22 +952,36 @@ export async function handleRefreshRequest(
       ":" +
       items.map((item) => item.repository + "#" + item.issueNumber).sort().join(",");
     const now = Date.now();
+    if (!env?.GITHUB_TOKEN) {
+      return json(
+        { error: "Live GitHub discovery is not configured on this deployment." },
+        503,
+      );
+    }
     const cached = cache.get(key);
     if (cached && cached.expires > now) {
       return json({ ...cached.value, limits: { ...cached.value.limits, cache: "hit" } });
     }
-    const wait = retryAfter(clientKey(request), now);
+    if (!env.DB) {
+      return json(
+        { error: "Durable quota protection is not configured on this deployment." },
+        503,
+      );
+    }
+    let wait: number;
+    try {
+      wait = await consumeQuota(env.DB, clientKey(request), env.GITHUB_TOKEN, now);
+    } catch {
+      return json(
+        { error: "Live GitHub discovery is unavailable because quota protection could not be verified." },
+        503,
+      );
+    }
     if (wait) {
       return json(
         { error: "Refresh limit reached. Keep the current evidence and retry shortly." },
         429,
         { "retry-after": String(wait) },
-      );
-    }
-    if (!env?.GITHUB_TOKEN) {
-      return json(
-        { error: "Live GitHub discovery is not configured on this deployment." },
-        503,
       );
     }
     const value = await runRefresh(profile, items, env.GITHUB_TOKEN);
@@ -1002,18 +1015,6 @@ function clientKey(request: Request) {
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     "local"
   );
-}
-
-function retryAfter(key: string, now: number) {
-  const current = (requests.get(key) ?? []).filter(
-    (stamp) => now - stamp < RATE_MS,
-  );
-  if (current.length >= RATE_MAX) {
-    return Math.ceil((RATE_MS - (now - current[0])) / 1000);
-  }
-  current.push(now);
-  requests.set(key, current);
-  return 0;
 }
 
 export async function handleScoutRequest(
@@ -1056,6 +1057,12 @@ export async function handleScoutRequest(
     const input = validateInput(raw);
     const key = normalized(input);
     const now = Date.now();
+    if (!env?.GITHUB_TOKEN) {
+      return json(
+        { error: "Live GitHub discovery is not configured on this deployment." },
+        503,
+      );
+    }
     const cached = cache.get(key);
     if (cached && cached.expires > now) {
       return json({
@@ -1063,7 +1070,21 @@ export async function handleScoutRequest(
         limits: { ...cached.value.limits, cache: "hit" },
       });
     }
-    const wait = retryAfter(clientKey(request), now);
+    if (!env.DB) {
+      return json(
+        { error: "Durable quota protection is not configured on this deployment." },
+        503,
+      );
+    }
+    let wait: number;
+    try {
+      wait = await consumeQuota(env.DB, clientKey(request), env.GITHUB_TOKEN, now);
+    } catch {
+      return json(
+        { error: "Live GitHub discovery is unavailable because quota protection could not be verified." },
+        503,
+      );
+    }
     if (wait) {
       return json(
         {
@@ -1072,12 +1093,6 @@ export async function handleScoutRequest(
         },
         429,
         { "retry-after": String(wait) },
-      );
-    }
-    if (!env?.GITHUB_TOKEN) {
-      return json(
-        { error: "Live GitHub discovery is not configured on this deployment." },
-        503,
       );
     }
     const value = await runScout(input, env.GITHUB_TOKEN);

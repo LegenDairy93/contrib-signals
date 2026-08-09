@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createQuotaDatabase } from "./fake-d1.mjs";
 
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
 workerUrl.searchParams.set("test", String(Date.now()));
 const { default: worker } = await import(workerUrl.href);
 
-const env = (token) => ({
+const quotaDb = createQuotaDatabase();
+const env = (token, database = quotaDb) => ({
   GITHUB_TOKEN: token,
+  DB: database,
   ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
 });
 const ctx = { waitUntil() {}, passThroughOnException() {} };
@@ -22,7 +25,7 @@ function api(body, options = {}) {
       },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
-    env(options.token),
+    env(options.token, options.db === undefined ? quotaDb : options.db),
     ctx,
   );
 }
@@ -37,7 +40,7 @@ function refreshApi(body, options = {}) {
       },
       body: JSON.stringify(body),
     }),
-    env(options.token),
+    env(options.token, options.db === undefined ? quotaDb : options.db),
     ctx,
   );
 }
@@ -80,6 +83,13 @@ test("validates origin, body, profile, and missing server credential", async () 
   const noKey = await api(profile, { ip: "security-key" });
   assert.equal(noKey.status, 503);
   assert.match((await noKey.json()).error, /not configured/i);
+
+  const noQuota = await api(
+    { ...profile, skills: ["security-quota"] },
+    { token: "server-secret", ip: "security-quota", db: null },
+  );
+  assert.equal(noQuota.status, 503);
+  assert.match((await noQuota.json()).error, /durable quota/i);
 
   const huge = await api("x".repeat(5000), {
     ip: "security-size",
@@ -275,16 +285,29 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
   }
 });
 
-test("rate-limits uncached scout profiles per client", async () => {
-  const statuses = [];
-  for (let index = 0; index < 4; index += 1) {
-    const response = await api(
-      { ...profile, skills: ["rate-" + index] },
-      { ip: "rate-client" },
+test("durably rate-limits uncached GitHub work across Worker environments", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("bounded test failure");
+  };
+  try {
+    const statuses = [];
+    for (let index = 0; index < 4; index += 1) {
+      const response = await api(
+        { ...profile, skills: ["rate-" + index] },
+        { token: "server-secret", ip: "rate-client" },
+      );
+      statuses.push(response.status);
+    }
+    assert.deepEqual(statuses, [504, 504, 504, 429]);
+    assert.equal(quotaDb.rows.size >= 1, true);
+    assert.equal(
+      [...quotaDb.rows.keys()].some((key) => key.includes("rate-client")),
+      false,
     );
-    statuses.push(response.status);
+  } finally {
+    globalThis.fetch = originalFetch;
   }
-  assert.deepEqual(statuses, [503, 503, 503, 429]);
 });
 
 test("redacts credentials when GitHub fails", async () => {

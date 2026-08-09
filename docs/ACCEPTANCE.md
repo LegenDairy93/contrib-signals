@@ -17,13 +17,16 @@ Contrib Signals is the evidence engine. The hosted product helps a contributor f
 | CS-09 | Pass locally | The brief exposes scope, lexical code-area hints, evidenced setup/tests, discussion count, rules, risks, and source links. |
 | CS-10 | Pass locally | Browser worklist supports save, remove, targeted evidence refresh, and CSV export using local storage. |
 | CS-11 | Pass | No route comments, claims, writes repository content, creates branches, or opens pull requests. |
-| CS-12 | In progress | Validation, same-origin rules, caching, per-isolate rate limits, four-call concurrency, 25-second deadline, and redaction tests pass. Hosted secret and durable quota review remain. |
+| CS-12 | In progress | Validation, same-origin rules, caching, four-call concurrency, 25-second deadline, and redaction tests pass. Uncached GitHub work now uses an atomic D1 quota shared across Worker instances, stores only salted client hashes, cleans expired windows, and fails closed when the ledger is unavailable. The hosted secret check remains. |
 | CS-13 | Pass | Current briefs are deterministic; no model synthesis is mixed into evidence. |
 | CS-14 | Pass locally | Desktop and 390px mobile production views were checked for layout and overflow; keyboard focus, loading, explicit no-key error, reduced-motion CSS, and clean browser logs were verified. |
 | CS-15 | In progress | A hosted fresh-user run remains after the secret and deployment gates. |
 
-Ten Python tests and five built-Worker tests pass. The normalized Node lockfile has a
-zero-vulnerability npm audit. The app is still intentionally unpublished.
+Ten Python tests and five built-Worker tests pass. The production dependency audit is
+clean. The full development tree retains two high advisories in vinext's transitive
+image-size 2.0.2 dependency; no patched npm release exists as of 2026-08-09, the app
+accepts no image input, and the affected parser identifiers are absent from the deployed
+JavaScript bundle. The app is still intentionally unpublished.
 
 ## Required gates
 
