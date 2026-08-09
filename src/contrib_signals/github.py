@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import http.client
 import json
 import os
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -17,6 +19,8 @@ class GitHubError(RuntimeError):
 class GitHubClient:
     token: str | None = None
     api_root: str = "https://api.github.com"
+    timeout_seconds: float = 30
+    retries: int = 1
 
     def __post_init__(self) -> None:
         if self.token is None:
@@ -29,20 +33,43 @@ class GitHubClient:
             url = f"{url}?{query}"
         headers = {
             "Accept": "application/vnd.github+json",
-            "User-Agent": "contrib-signals/0.1",
+            "User-Agent": "contrib-signals/0.2",
             "X-GitHub-Api-Version": "2022-11-28",
         }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        request = urllib.request.Request(url, headers=headers)
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                return json.load(response)
-        except urllib.error.HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")
-            raise GitHubError(f"GitHub returned {error.code} for {url}: {detail}") from error
-        except urllib.error.URLError as error:
-            raise GitHubError(f"Could not reach GitHub for {url}: {error.reason}") from error
+
+        for attempt in range(self.retries + 1):
+            request = urllib.request.Request(url, headers=headers)
+            try:
+                with urllib.request.urlopen(
+                    request, timeout=self.timeout_seconds
+                ) as response:
+                    return json.load(response)
+            except urllib.error.HTTPError as error:
+                transient = error.code in {429, 500, 502, 503, 504}
+                if transient and attempt < self.retries:
+                    time.sleep(0.4)
+                    continue
+                detail = error.read().decode("utf-8", errors="replace")[:300]
+                raise GitHubError(
+                    f"GitHub returned {error.code} for {path}: {detail}"
+                ) from error
+            except (
+                urllib.error.URLError,
+                http.client.RemoteDisconnected,
+                TimeoutError,
+                OSError,
+            ) as error:
+                if attempt < self.retries:
+                    time.sleep(0.4)
+                    continue
+                reason = getattr(error, "reason", None) or str(error)
+                raise GitHubError(
+                    f"Could not reach GitHub for {path}: {reason}"
+                ) from error
+
+        raise GitHubError(f"Could not reach GitHub for {path}.")
 
     def exists(self, repository: str, path: str) -> bool:
         try:

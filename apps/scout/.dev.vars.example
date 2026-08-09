@@ -1,0 +1,2 @@
+# Server-side only. Copy this file to .dev.vars and replace the value.
+GITHUB_TOKEN=github_pat_replace_me

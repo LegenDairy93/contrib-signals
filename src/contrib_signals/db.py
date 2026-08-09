@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import sqlite3
+from importlib.resources import files
 from pathlib import Path
 
 
-def schema_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "sql" / "schema.sql"
+def schema_text() -> str:
+    return (
+        files("contrib_signals")
+        .joinpath("data")
+        .joinpath("schema.sql")
+        .read_text(encoding="utf-8")
+    )
 
 
 def connect(path: str | Path) -> sqlite3.Connection:
@@ -14,5 +20,5 @@ def connect(path: str | Path) -> sqlite3.Connection:
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
-    connection.executescript(schema_path().read_text(encoding="utf-8"))
+    connection.executescript(schema_text())
     return connection

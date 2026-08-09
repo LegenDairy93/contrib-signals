@@ -1,16 +1,36 @@
 # Contrib Signals
 
-**An auditable SQLite dataset for finding open-source repositories where outside contributions are likely to be reviewed.**
+**Find open-source work worth doing, then investigate it before you code.**
 
-**[Explore the interactive public snapshot](https://legendairy93.github.io/contrib-signals/)**
+Contrib Signals checks current issue state, repository activity, outside-contributor
+pull requests, maintainer responses, policies, and possible duplicate work. Every
+important signal links back to GitHub evidence.
 
-`good first issue` is only a label. It does not tell you whether a repository is active,
-whether outside pull requests are merged, whether the issue is already stale, or whether
-the documented contribution path exists.
+## Hosted scout
 
-Contrib Signals collects public GitHub evidence, stores it in SQLite, and calculates its
-rankings in readable SQL. It recommends places to investigate; it never claims issues,
-posts comments, generates patches, or opens pull requests.
+The full-stack app in apps/scout turns a small contribution profile into at most six
+current opportunities, separate fit and readiness scores, a cited investigation brief,
+policy checks, duplicate-work warnings, and a refreshable local worklist.
+
+Its production build, deterministic API tests, and one real GitHub smoke run pass.
+It is not advertised as publicly live until the hosted secret, quota, responsive, and
+fresh-user gates in docs/ACCEPTANCE.md pass.
+
+    cd apps/scout
+    npm install
+    Copy-Item .dev.vars.example .dev.vars
+    npm run dev
+
+The GitHub credential stays server-side. The scout never claims issues, posts comments,
+generates unsolicited patches, pushes branches, or opens pull requests.
+
+## Evidence dataset and static snapshot
+
+**[Explore the dated public snapshot](https://legendairy93.github.io/contrib-signals/)**
+
+The Python and SQLite surface remains useful for reproducible research, scheduled
+datasets, and auditing the scoring logic. The public snapshot is dated evidence, not a
+live recommendation service.
 
 ## What it measures
 
