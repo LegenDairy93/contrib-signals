@@ -20,7 +20,7 @@ Contrib Signals is the evidence engine. The hosted product helps a contributor f
 | CS-12 | In progress | Validation, same-origin rules, caching, four-call concurrency, 25-second deadline, and redaction tests pass. Uncached GitHub work now uses an atomic D1 quota shared across Worker instances, stores only salted client hashes, cleans expired windows, and fails closed when the ledger is unavailable. The hosted secret check remains. |
 | CS-13 | Pass | Current briefs are deterministic; no model synthesis is mixed into evidence. |
 | CS-14 | Pass locally | Desktop and 390px mobile production views were checked for layout and overflow; keyboard focus, loading, explicit no-key error, reduced-motion CSS, and clean browser logs were verified. |
-| CS-15 | In progress | A hosted fresh-user run remains after the secret and deployment gates. |
+| CS-15 | In progress | A bounded hosted smoke script is ready and spends only two quota operations while checking a current opportunity, fresh timestamps, source links, targeted refresh identity, and secret-shaped output. Execution remains after the secret and deployment gates. |
 
 Ten Python tests and five built-Worker tests pass. The production dependency audit is
 clean. The full development tree retains two high advisories in vinext's transitive

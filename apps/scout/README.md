@@ -40,6 +40,15 @@ client assets. .dev.vars is ignored by Git.
     npm run lint
     npm test
 
+After deployment, run the bounded live acceptance probe:
+
+    $env:SCOUT_BASE_URL="https://your-deployed-site.example"
+    npm run test:hosted
+
+It consumes two uncached quota operations: one discovery and one targeted refresh. It
+requires a current opportunity, fresh timestamps, GitHub evidence links, stable refresh
+identity, and a response with no credential-shaped text.
+
 The production Worker tests cover:
 
 - no baked opportunity in the server-rendered page
