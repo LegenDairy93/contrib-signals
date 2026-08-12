@@ -4,7 +4,26 @@ const API = "https://api.github.com";
 const MAX_CALLS = 48;
 const CACHE_MS = 300_000;
 const MAX_RESULTS = 8;
-const MAX_REPOS = 4;
+const MAX_REPOS = 5;
+const MAX_ISSUE_AGE_DAYS = 120;
+const SEARCH_PAGE_SIZE = 25;
+const REPO_ENRICHMENT_CALLS = 8;
+
+const SEARCH_STRATEGIES = [
+  {
+    name: "beginner-entry",
+    labels: ["good first issue", "beginner", "starter", "first-timers-only"],
+    active: false,
+  },
+  {
+    name: "active-help",
+    labels: [
+      "good first issue", "beginner", "starter", "first-timers-only",
+      "help wanted", "low hanging fruit", "contributor friendly", "difficulty: easy",
+    ],
+    active: true,
+  },
+] as const;
 
 export type ScoutInput = {
   languages: string[];
@@ -31,6 +50,19 @@ type Issue = {
   locked?: boolean;
   pull_request?: unknown;
 };
+type SearchCandidate = {
+  issue: Issue;
+  language: string;
+  strategies: string[];
+  pages: number[];
+  activeHelpMatch: boolean;
+};
+
+type RankedCandidate = SearchCandidate & {
+  score: number;
+  rankReasons: string[];
+};
+
 
 type Repo = {
   full_name: string;
@@ -68,6 +100,7 @@ type Community = {
 };
 type Content = { content?: string; encoding?: string; html_url?: string };
 type Tree = { truncated?: boolean; tree?: Array<{ path: string; type: string }> };
+type Commit = { sha: string; html_url?: string };
 type Evidence = { label: string; url: string; observedAt: string; detail: string };
 
 export type Opportunity = {
@@ -79,6 +112,11 @@ export type Opportunity = {
   title: string;
   summary: string;
   language: string;
+  discovery?: {
+    preRankScore: number;
+    preRankReasons: string[];
+    searchStrategies: string[];
+  };
   labels: string[];
   updatedAt: string;
   contributionType: "code" | "tests" | "documentation" | "design" | "triage" | "other";
@@ -120,12 +158,14 @@ export type Opportunity = {
     risks: string[];
   };
   repositorySignals: {
+    defaultBranch: string;
+    observedCommit: string;
     lastPush: string;
     stars: number;
     communityHealth: number | null;
     sampledOutsidePulls: number;
     sampledOutsideMerged: number;
-    sampledMaintainerResponses: number;
+    sampledMaintainerResponses: number | null;
   };
   evidence: Evidence[];
 };
@@ -145,6 +185,20 @@ export type ScoutResponse = {
     repositoryLimit: number;
     resultLimit: number;
     labelFamilies: string[];
+    searchStrategies?: string[];
+    searchPages?: number;
+    candidatesRetrieved?: number;
+    candidatesDeduplicated?: number;
+    eligibleCandidates?: number;
+    preRankedCandidates?: number;
+    repositoriesConsidered?: number;
+    exclusionCounts?: {
+      assigned: number;
+      staleIssue: number;
+      invalidRepository: number;
+      unavailableRepository: number;
+      inactiveRepository: number;
+    };
     blindSpots: string[];
   };
   limits: { githubCalls: number; maxGithubCalls: number; cache: "hit" | "miss" };
@@ -154,13 +208,14 @@ export type ScoutResponse = {
 type EnvLike = { GITHUB_TOKEN?: string; DB?: QuotaDatabase };
 type RepoEvidence = {
   repo: Repo;
+  head: Commit;
   community: Community | null;
   pulls: Pull[];
   contribution: string;
   readme: string;
   security: string;
   tree: Tree | null;
-  maintainerResponses: number;
+  maintainerResponses: number | null;
   links: Evidence[];
 };
 
@@ -404,7 +459,7 @@ async function collectRepo(
   const encoded = fullName.split("/").map(encodeURIComponent).join("/");
   const repo = await github.get<Repo>("/repos/" + encoded);
   if (!repo) throw new ScoutError(502, "Repository evidence was unavailable.");
-  const [community, pulls, rootSecurity, tree] = await Promise.all([
+  const [community, pulls, rootSecurity, tree, head] = await Promise.all([
     github.get<Community>("/repos/" + encoded + "/community/profile", true),
     github.get<Pull[]>("/repos/" + encoded + "/pulls?state=all&sort=updated&direction=desc&per_page=20", true),
     github.get<Content>("/repos/" + encoded + "/contents/SECURITY.md", true),
@@ -412,19 +467,17 @@ async function collectRepo(
       "/repos/" + encoded + "/git/trees/" + encodeURIComponent(repo.default_branch),
       true,
     ),
+    github.get<Commit>(
+      "/repos/" + encoded + "/commits/" + encodeURIComponent(repo.default_branch),
+    ),
   ]);
-  let security = rootSecurity;
-  if (!security) {
-    const securityPath = (tree?.tree ?? [])
-      .map((entry) => entry.path)
-      .find((entry) => [".github/security.md", "docs/security.md"].includes(entry.toLowerCase()));
-    if (securityPath) {
-      security = await github.get<Content>(
-        "/repos/" + encoded + "/contents/" + securityPath.split("/").map(encodeURIComponent).join("/"),
-        true,
-      );
-    }
-  }
+  if (!head?.sha) throw new ScoutError(502, "The repository head commit was unavailable.");
+  const securityPath = (tree?.tree ?? [])
+    .map((entry) => entry.path)
+    .find((entry) => [".github/security.md", "docs/security.md"].includes(entry.toLowerCase()));
+  const security = rootSecurity ?? (securityPath ? {
+    html_url: repo.html_url + "/blob/" + repo.default_branch + "/" + securityPath,
+  } : null);
   const profile = community ?? null;
   const contributionUrl = profile?.files?.contributing?.url ?? null;
   const readmeUrl = profile?.files?.readme?.url ?? null;
@@ -433,18 +486,7 @@ async function collectRepo(
     readmeUrl ? github.get<Content>(readmeUrl, true) : Promise.resolve(null),
   ]);
   const pullList = pulls ?? [];
-  const external = pullList.filter((pull) => isOutside(pull.author_association)).slice(0, 3);
-  const commentSets = await mapLimit(external, 2, (pull) =>
-    github.get<Array<{ author_association?: string }>>(
-      "/repos/" + encoded + "/issues/" + pull.number + "/comments?per_page=30",
-      true,
-    ),
-  );
-  const maintainerResponses = commentSets.filter((comments) =>
-    (comments ?? []).some((comment) =>
-      ["OWNER", "MEMBER", "COLLABORATOR"].includes(comment.author_association ?? ""),
-    ),
-  ).length;
+  const maintainerResponses = null;
 
   const links: Evidence[] = [
     {
@@ -482,6 +524,7 @@ async function collectRepo(
   }
   return {
     repo,
+    head,
     community: profile,
     pulls: pullList,
     contribution: decode(contributionFile),
@@ -802,6 +845,8 @@ function buildOpportunity(
       risks: unique([...reasonsNotToContribute, ...uncertainty]).slice(0, 6),
     },
     repositorySignals: {
+      defaultBranch: repo.default_branch,
+      observedCommit: evidence.head.sha,
       lastPush: repo.pushed_at,
       stars: repo.stargazers_count,
       communityHealth: evidence.community?.health_percentage ?? null,
@@ -813,16 +858,124 @@ function buildOpportunity(
   };
 }
 
-function makeQueries(input: ScoutInput, now: Date) {
-  const cutoff = new Date(now.getTime() - 60 * 86_400_000)
+type SearchRequest = {
+  query: string;
+  language: string;
+  strategy: string;
+  page: number;
+};
+
+function makeSearchRequests(input: ScoutInput, now: Date): SearchRequest[] {
+  const cutoff = new Date(now.getTime() - MAX_ISSUE_AGE_DAYS * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  return input.languages.map((selectedLanguage) =>
-    "is:issue is:open is:public archived:false no:assignee -linked:pr " +
-      "updated:>=" + cutoff +
-      ' label:"good first issue","help wanted","beginner","starter" language:"' +
-      selectedLanguage.replace(/["\\]/g, "") + '"',
+  const base = "is:issue is:open is:public archived:false no:assignee -linked:pr ";
+  const firstPages = input.languages.flatMap((selectedLanguage) =>
+    SEARCH_STRATEGIES.map((strategy) => ({
+      query:
+        base +
+        "updated:>=" +
+        cutoff +
+        ' label:"' +
+        strategy.labels.join('","') +
+        '" language:"' +
+        selectedLanguage.replace(/["\\]/g, "") +
+        '"' +
+        (strategy.active ? " comments:>=1" : ""),
+      language: selectedLanguage,
+      strategy: strategy.name,
+      page: 1,
+    })),
   );
+  const requests = [...firstPages];
+  for (const request of firstPages) {
+    if (requests.length >= MAX_CALLS - MAX_REPOS * REPO_ENRICHMENT_CALLS) break;
+    requests.push({ ...request, page: 2 });
+  }
+  return requests;
+}
+
+function mergeCandidates(
+  requests: SearchRequest[],
+  pages: Array<{ items?: Issue[] } | null>,
+): { candidates: SearchCandidate[]; retrieved: number } {
+  const byUrl = new Map<string, SearchCandidate>();
+  let retrieved = 0;
+  requests.forEach((request, requestIndex) => {
+    for (const issue of pages[requestIndex]?.items ?? []) {
+      retrieved += 1;
+      if (issue.pull_request) continue;
+      const existing = byUrl.get(issue.html_url);
+      if (existing) {
+        existing.strategies = unique([...existing.strategies, request.strategy]);
+        existing.pages = unique([...existing.pages, request.page]);
+        existing.activeHelpMatch ||= request.strategy === "active-help";
+        continue;
+      }
+      byUrl.set(issue.html_url, {
+        issue,
+        language: request.language,
+        strategies: [request.strategy],
+        pages: [request.page],
+        activeHelpMatch: request.strategy === "active-help",
+      });
+    }
+  });
+  return { candidates: [...byUrl.values()], retrieved };
+}
+
+function preRankCandidate(candidate: SearchCandidate, now: Date): RankedCandidate {
+  const { issue } = candidate;
+  const labels = issueLabels(issue);
+  const text = (issue.title + "\n" + (issue.body ?? "") + "\n" + labels.join(" ")).toLowerCase();
+  const bodyTokens = tokens(issue.body ?? "").length;
+  const age = daysSince(issue.updated_at, now);
+  const reasons: string[] = [];
+  let score = 0;
+  const add = (points: number, reason: string) => {
+    score += points;
+    reasons.push((points > 0 ? "+" : "") + points + " " + reason);
+  };
+
+  if (candidate.activeHelpMatch) add(18, "matched the active help-wanted query");
+  if (labels.some((label) => /good first|beginner|starter|first.?timers/i.test(label))) {
+    add(16, "has a beginner entry label");
+  } else if (labels.some((label) => /help wanted|contributor friendly|low hanging|difficulty.?easy/i.test(label))) {
+    add(8, "has a contribution-ready label");
+  }
+  if (/\b(test|testing|coverage|fixture|docs?|documentation|readme|docstring)\b/i.test(text)) {
+    add(8, "looks like bounded test or documentation work");
+  }
+  if (/acceptance criteria|done when|expected behavior|steps to reproduce/i.test(text)) {
+    add(7, "states acceptance or reproduction evidence");
+  }
+  if (/`[^`\n]+\.[a-z0-9]{1,8}`/i.test(issue.body ?? "")) {
+    add(7, "references a concrete file");
+  }
+  if (["OWNER", "MEMBER", "COLLABORATOR"].includes(issue.author_association ?? "")) {
+    add(5, "was opened by a maintainer");
+  }
+  if (issue.comments <= 6) add(5, "has a low coordination load");
+  else if (issue.comments > 20) add(-10, "has a crowded discussion");
+  if (age <= 30) add(5, "was updated recently");
+  else if (age > 90) add(-4, "is an older maintained candidate");
+  if (bodyTokens <= 320) add(4, "has bounded written scope");
+  else if (bodyTokens > 700) add(-12, "has broad written scope");
+  if (/\b(epic|roadmap|tracker|advisory report|north star|call for|working group)\b/i.test(text)) {
+    add(-28, "looks like a tracker, program, or coordination issue");
+  }
+  return { ...candidate, score, rankReasons: reasons };
+}
+
+function rankCandidates(candidates: SearchCandidate[], now: Date): RankedCandidate[] {
+  return candidates
+    .map((candidate) => preRankCandidate(candidate, now))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        new Date(right.issue.updated_at).getTime() - new Date(left.issue.updated_at).getTime() ||
+        left.issue.html_url.localeCompare(right.issue.html_url),
+    );
 }
 
 export async function runScout(
@@ -831,62 +984,74 @@ export async function runScout(
 ): Promise<ScoutResponse> {
   const now = new Date();
   const generatedAt = now.toISOString();
-  const queries = makeQueries(input, now);
+  const searchRequests = makeSearchRequests(input, now);
+  const queries = searchRequests.map((request) => request.query);
   const github = new GitHub(token);
-  const pages = await mapLimit(queries, 3, (query) =>
+  const pages = await mapLimit(searchRequests, 3, (request) =>
     github.get<{ items?: Issue[] }>(
-      "/search/issues?q=" + encodeURIComponent(query) + "&sort=updated&order=desc&per_page=20",
+      "/search/issues?q=" +
+        encodeURIComponent(request.query) +
+        "&sort=updated&order=desc&per_page=" +
+        SEARCH_PAGE_SIZE +
+        "&page=" +
+        request.page,
     ),
   );
-  const candidates: Issue[] = [];
-  const seenCandidates = new Set<string>();
-  const longestPage = Math.max(0, ...pages.map((page) => page?.items?.length ?? 0));
-  for (let index = 0; index < longestPage; index += 1) {
-    for (const page of pages) {
-      const issue = page?.items?.[index];
-      if (!issue || issue.pull_request || seenCandidates.has(issue.html_url)) continue;
-      seenCandidates.add(issue.html_url);
-      candidates.push(issue);
-    }
-  }
+  const merged = mergeCandidates(searchRequests, pages);
+  const candidates = merged.candidates;
   const excluded: ScoutResponse["excluded"] = [];
-  const eligible: Issue[] = [];
+  const exclusionCounts = {
+    assigned: 0,
+    staleIssue: 0,
+    invalidRepository: 0,
+    unavailableRepository: 0,
+    inactiveRepository: 0,
+  };
+  const eligible: SearchCandidate[] = [];
   const repos = new Set<string>();
 
-  for (const issue of candidates) {
-    const repo = repoFromUrl(issue.repository_url);
-    if (!repo) continue;
+  for (const candidate of candidates) {
+    const { issue } = candidate;
+    const repository = repoFromUrl(issue.repository_url);
+    if (!repository) {
+      exclusionCounts.invalidRepository += 1;
+      continue;
+    }
     if (issue.assignee) {
+      exclusionCounts.assigned += 1;
+      excluded.push({ issue: issue.title, url: issue.html_url, reason: "Already assigned." });
+      continue;
+    }
+    if (daysSince(issue.updated_at, now) > MAX_ISSUE_AGE_DAYS) {
+      exclusionCounts.staleIssue += 1;
       excluded.push({
         issue: issue.title,
         url: issue.html_url,
-        reason: "Already assigned.",
+        reason: "Not updated in the last " + MAX_ISSUE_AGE_DAYS + " days.",
       });
       continue;
     }
-    if (daysSince(issue.updated_at, now) > 60) {
-      excluded.push({
-        issue: issue.title,
-        url: issue.html_url,
-        reason: "Not updated in the last 60 days.",
-      });
-      continue;
-    }
-    eligible.push(issue);
+    eligible.push(candidate);
   }
 
-  const selected: Issue[] = [];
-  for (const issue of eligible) {
-    const repo = repoFromUrl(issue.repository_url);
-    if (!repo || repos.has(repo) || repos.size >= MAX_REPOS) continue;
-    repos.add(repo);
-    selected.push(issue);
+  const ranked = rankCandidates(eligible, now);
+  const selected: RankedCandidate[] = [];
+  for (const candidate of ranked) {
+    const repository = repoFromUrl(candidate.issue.repository_url);
+    if (!repository || repos.has(repository) || repos.size >= MAX_REPOS) continue;
+    repos.add(repository);
+    selected.push(candidate);
   }
-  for (const issue of eligible) {
+  for (const candidate of ranked) {
     if (selected.length >= MAX_RESULTS) break;
-    const repo = repoFromUrl(issue.repository_url);
-    if (!repos.has(repo) || selected.some((item) => item.html_url === issue.html_url)) continue;
-    selected.push(issue);
+    const repository = repoFromUrl(candidate.issue.repository_url);
+    if (
+      !repos.has(repository) ||
+      selected.some((item) => item.issue.html_url === candidate.issue.html_url)
+    ) {
+      continue;
+    }
+    selected.push(candidate);
   }
 
   const pairs = await mapLimit([...repos], 2, async (name) => {
@@ -896,11 +1061,16 @@ export async function runScout(
   const byRepo = new Map(pairs);
   const opportunities: Opportunity[] = [];
 
-  for (const issue of selected) {
+  for (const candidate of selected) {
+    const { issue } = candidate;
     const repoName = repoFromUrl(issue.repository_url);
     const evidence = byRepo.get(repoName);
-    if (!evidence) continue;
+    if (!evidence) {
+      exclusionCounts.unavailableRepository += 1;
+      continue;
+    }
     if (evidence.repo.archived || evidence.repo.disabled || evidence.repo.fork) {
+      exclusionCounts.unavailableRepository += 1;
       excluded.push({
         issue: issue.title,
         url: issue.html_url,
@@ -909,6 +1079,7 @@ export async function runScout(
       continue;
     }
     if (daysSince(evidence.repo.pushed_at, now) > 90) {
+      exclusionCounts.inactiveRepository += 1;
       excluded.push({
         issue: issue.title,
         url: issue.html_url,
@@ -916,7 +1087,13 @@ export async function runScout(
       });
       continue;
     }
-    opportunities.push(buildOpportunity(issue, evidence, input, now, candidates));
+    const opportunity = buildOpportunity(issue, evidence, input, now, candidates.map((item) => item.issue));
+    opportunity.discovery = {
+      preRankScore: candidate.score,
+      preRankReasons: candidate.rankReasons,
+      searchStrategies: candidate.strategies,
+    };
+    opportunities.push(opportunity);
   }
 
   const fitOrder = { strong: 0, possible: 1, weak: 2 } as const;
@@ -927,6 +1104,7 @@ export async function runScout(
       readinessOrder[left.readiness.state] - readinessOrder[right.readiness.state] ||
       fitOrder[left.fit.level] - fitOrder[right.fit.level] ||
       coverageOrder[left.evidenceCoverage.level] - coverageOrder[right.evidenceCoverage.level] ||
+      (right.discovery?.preRankScore ?? 0) - (left.discovery?.preRankScore ?? 0) ||
       new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
   return {
@@ -943,7 +1121,17 @@ export async function runScout(
       repositoriesInspected: repos.size,
       repositoryLimit: MAX_REPOS,
       resultLimit: MAX_RESULTS,
-      labelFamilies: ["good first issue", "help wanted", "beginner", "starter"],
+      labelFamilies: unique(SEARCH_STRATEGIES.flatMap((strategy) => [...strategy.labels])),
+      searchStrategies: unique(searchRequests.map((request) => request.strategy)),
+      searchPages: searchRequests.length,
+      candidatesRetrieved: merged.retrieved,
+      candidatesDeduplicated: candidates.length,
+      eligibleCandidates: eligible.length,
+      preRankedCandidates: ranked.length,
+      repositoriesConsidered: new Set(
+        ranked.map((candidate) => repoFromUrl(candidate.issue.repository_url)).filter(Boolean),
+      ).size,
+      exclusionCounts,
       blindSpots: [
         "Projects without searchable GitHub issue labels are outside this run.",
         "External trackers and repository-specific difficulty taxonomies are not indexed yet.",

@@ -112,6 +112,19 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
     if (url.includes("/search/issues?")) {
       return Response.json({
         items: [{
+          number: 99,
+          title: "North star roadmap tracker",
+          body: "This epic tracker coordinates a working group and a broad roadmap.",
+          html_url: "https://github.com/acme/tool/issues/99",
+          repository_url: "https://api.github.com/repos/acme/tool",
+          updated_at: new Date(Date.now() + 1000).toISOString(),
+          created_at: new Date().toISOString(),
+          comments: 1,
+          assignee: null,
+          labels: [{ name: "help wanted" }],
+          user: { login: "maintainer" },
+          author_association: "MEMBER",
+        }, {
           number: 42,
           title: "Improve parser error messages",
           body: "Update the parser diagnostics in \x60src/parser.ts\x60 and add focused tests.",
@@ -173,6 +186,9 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
     }
     if (url.endsWith("/contents/SECURITY.md")) {
       return new Response("missing", { status: 404 });
+    }
+    if (url.includes("/commits/main")) {
+      return Response.json({ sha: "0123456789abcdef", html_url: "https://github.com/acme/tool/commit/0123456789abcdef" });
     }
     if (url.includes("/git/trees/")) {
       return Response.json({
@@ -238,15 +254,18 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
     });
     assert.equal(first.status, 200);
     const payload = await first.json();
-    assert.equal(payload.opportunities.length, 1);
-    const item = payload.opportunities[0];
-    assert.equal(item.id, "acme/tool#42");
+    assert.equal(payload.opportunities.length, 2);
+    const item = payload.opportunities.find((opportunity) => opportunity.id === "acme/tool#42");
+    const tracker = payload.opportunities.find((opportunity) => opportunity.id === "acme/tool#99");
+    assert.ok(item);
     assert.equal(item.duplicateRisk[0].state, "open");
     assert.match(item.brief.aiPolicy, /AI-generated code must be disclosed/);
     assert.ok(item.brief.setupCommands.includes("npm install"));
     assert.ok(item.brief.testCommands.includes("npm test"));
     assert.ok(item.evidence.some((entry) => entry.label === "Contribution guide"));
-    assert.equal(item.repositorySignals.sampledMaintainerResponses, 1);
+    assert.equal(item.repositorySignals.sampledMaintainerResponses, null);
+    assert.equal(item.repositorySignals.defaultBranch, "main");
+    assert.equal(item.repositorySignals.observedCommit, "0123456789abcdef");
     assert.equal(item.brief.policyChecks.find((check) => check.name === "Contribution guide").status, "found");
     assert.equal(item.brief.policyChecks.find((check) => check.name === "Security policy").status, "not-found");
     assert.match(item.brief.discussion[0], /2 issue comment/);
@@ -256,7 +275,18 @@ test("uses live GitHub responses, cites evidence, checks duplicates, and caches"
     assert.equal(payload.coverage.languagesSearched[0], "TypeScript");
     assert.equal(payload.coverage.languagesSearched[1], "Rust");
     assert.equal(payload.coverage.repositoriesInspected, 1);
+    assert.deepEqual(payload.coverage.searchStrategies, ["beginner-entry", "active-help"]);
+    assert.equal(payload.coverage.searchPages, 8);
+    assert.equal(payload.coverage.candidatesRetrieved, 16);
+    assert.equal(payload.coverage.candidatesDeduplicated, 2);
+    assert.equal(payload.coverage.eligibleCandidates, 2);
+    assert.equal(payload.coverage.repositoriesConsidered, 1);
+    assert.ok(tracker);
+    assert.ok(item.discovery.preRankScore > tracker.discovery.preRankScore);
+    assert.ok(item.discovery.preRankScore > 0);
+    assert.ok(item.discovery.preRankReasons.some((reason) => /bounded/.test(reason)));
     assert.equal(payload.limits.cache, "miss");
+    assert.ok(payload.limits.githubCalls <= payload.limits.maxGithubCalls);
     assert.doesNotMatch(JSON.stringify(payload), /server-secret/);
     assert.ok(calls.every((call) => call.authorization === "Bearer server-secret"));
 
